@@ -1,0 +1,37 @@
+---
+import { Image } from "astro:assets";
+import type { Series } from "../lib/photos";
+import { formatMonthYear } from "../utils/formatters";
+
+interface Props {
+  series: Series[];
+}
+
+const { series } = Astro.props;
+const photos = series.flatMap((s) => s.photos.map((photo) => ({ photo, series: s })));
+---
+
+<section class="index" aria-label="All images">
+  {
+    photos.map(({ photo, series: s }) => (
+      <a
+        href={`#${s.slug}/${photo.indexInSeries + 1}`}
+        class="index__thumb"
+        data-collection={s.title}
+        data-collection-date={formatMonthYear(s.date)}
+        aria-label={`${s.title}, image ${photo.indexInSeries + 1}`}
+      >
+        <Image
+          src={photo.src}
+          alt={photo.alt}
+          widths={[400, 800]}
+          sizes="(max-width: 768px) 33vw, (max-width: 1100px) 25vw, (max-width: 1400px) 20vw, 17vw"
+          format="webp"
+          loading="lazy"
+          style={`aspect-ratio: ${photo.width} / ${photo.height};`}
+          data-color={photo.color}
+        />
+      </a>
+    ))
+  }
+</section>

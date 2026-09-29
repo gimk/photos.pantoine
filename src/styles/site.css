@@ -1,0 +1,684 @@
+/* Layout modelled on zanvargek.com: one line of small serif type, a white feed of
+   series covers, a black index of every image, and a full-screen viewer.
+   Views are driven by data attributes on <body>, set by src/scripts/site.ts. */
+
+:root {
+  --page-mg: 12px;
+  --nav-h: 48px;
+  /* Gap between the nav's paired labels; also bounds the sticky feed labels */
+  --nav-gap: clamp(40px, 12.8vw, 240px);
+  --font: "Fraunces Variable", Georgia, serif;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --fade: 0.35s var(--ease);
+  /* Fraunces is variable: hover effects animate its weight between these */
+  --weight: 400;
+  --weight-hover: 700;
+
+  --bg: #fff;
+  --fg: #000;
+  --overlay: rgb(255 255 255 / 0.96);
+}
+
+body[data-view="index"] {
+  --bg: #000;
+  --fg: #fff;
+  --overlay: rgb(0 0 0 / 0.94);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* No visible scrollbars (pages still scroll). This also keeps the page width constant when the
+   viewer locks scrolling, so photos fly back to exactly where their thumbnail is. */
+html,
+.about {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+.about::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  /* No drag-to-select anywhere; images can't be dragged out either (see img below and site.ts) */
+  user-select: none;
+  -webkit-user-select: none;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  /* Fraunces: wonky letterforms on, and a fixed display optical size so small text uses the
+     headline shapes (more contrast, tighter) instead of following the text size */
+  font-variation-settings: "WONK" 1, "opsz" 36;
+  font-size: 15px;
+  line-height: 1.2;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color var(--fade),
+    color var(--fade);
+}
+
+body[data-zoom],
+body[data-about] {
+  overflow: hidden;
+}
+
+p {
+  margin: 0;
+}
+
+a,
+button {
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+}
+
+button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+img {
+  display: block;
+  -webkit-user-drag: none;
+}
+
+:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 3px;
+}
+
+/* Negative text: white blended with `difference` renders each glyph as the exact
+   inverse of whatever is behind it (black on white, white on black, cyan on red...),
+   so it stays legible over the page, the viewer and photos scrolling under the nav.
+   Muted text is translucent white, i.e. a partial inversion. */
+.nav,
+.feed__label,
+.zoom__bar,
+.zoom__cursor,
+.about__inner,
+.empty {
+  color: #fff;
+  mix-blend-mode: difference;
+}
+
+/* ---------------------------------------------------------------------------
+   Nav: [count · name] left, marquee centred, [About · toggle] right. The two side
+   groups share --nav-gap so their spacing always matches. The equal 1fr side tracks
+   keep the marquee on the page centre. Each slot stacks all its labels in the same
+   cell and fades in the one that matches the current state. */
+
+.nav {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, 22em) minmax(max-content, 1fr);
+  column-gap: var(--page-mg);
+  align-items: center;
+  height: var(--nav-h);
+  padding: 0 var(--page-mg);
+  pointer-events: none;
+}
+
+.nav__group {
+  display: flex;
+  align-items: center;
+  gap: var(--nav-gap);
+}
+
+.nav__group--right {
+  justify-self: end;
+}
+
+.nav__slot {
+  display: grid;
+}
+
+.nav__slot > * {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+
+.nav__right {
+  justify-items: end;
+}
+
+/* The collection label (hovered thumbnail, or the photo open in the viewer) sits over the count
+   without widening its slot, which would push the name along. Long names run into the gap and
+   are cut before reaching the name. */
+.nav__count {
+  position: relative;
+}
+
+.nav__label--collection {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: calc(100% + var(--nav-gap) - 1em);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Collection name, then the date in italic */
+.label-date {
+  margin-left: 0.4em;
+  font-style: italic;
+}
+
+/* Continuously scrolling "photos.pantoine.com.", fading out at both ends */
+.marquee {
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+
+.marquee__track {
+  display: flex;
+  width: max-content;
+  animation: marquee 40s linear infinite;
+}
+
+.marquee__copy {
+  flex: none;
+  white-space: nowrap;
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.nav__label {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--fade),
+    visibility var(--fade);
+}
+
+/* Each link reserves the width of its bold version (an invisible bold copy of its text, from
+   data-text), so a weight change on hover never moves its neighbours */
+.nav__link {
+  display: inline-flex;
+  flex-direction: column;
+  margin: -10px;
+  padding: 10px;
+}
+
+.nav__right .nav__link {
+  align-items: flex-end;
+}
+
+.nav__link::after {
+  content: attr(data-text);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: var(--weight-hover);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Hover thickens the text (variable weight) instead of dimming it */
+.nav__link,
+.about__link,
+.feed__title {
+  font-weight: var(--weight);
+  transition: font-weight 0.3s var(--ease);
+}
+
+.nav__link {
+  transition:
+    opacity var(--fade),
+    visibility var(--fade),
+    font-weight 0.3s var(--ease);
+}
+
+.nav__link:hover,
+.about__link:hover,
+.feed__item:has(.feed__img:hover) .feed__title {
+  font-weight: var(--weight-hover);
+}
+
+/* Always visible */
+.nav__title .nav__label,
+.nav__middle .nav__label,
+/* Index (home) */
+body[data-view="index"]:not([data-zoom], [data-about]) .nav__label--open-feed,
+body[data-view="index"]:not([data-zoom], [data-about], [data-hover]) .nav__label--count,
+body[data-view="index"][data-hover]:not([data-zoom], [data-about]) .nav__label--collection,
+/* Feed */
+body[data-view="feed"]:not([data-zoom], [data-about]) .nav__label--close-feed,
+/* Viewer and About */
+body[data-zoom]:not([data-about]) .nav__label--collection,
+body[data-zoom] .nav__label--close,
+body[data-about] .nav__label--close {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Feed: one centred column of series covers */
+
+.main {
+  padding-top: var(--nav-h);
+}
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--page-mg) * 4);
+  padding: var(--page-mg) var(--page-mg) calc(var(--nav-h) * 2);
+}
+
+/* Label above the cover. While its cover scrolls by it sticks on the nav's own line, in the
+   empty top-left slot, and leaves with the last bit of the cover (sticky is bounded by
+   .feed__item). Two lines: the name, then the date and image count. Its width is capped so it
+   never runs into "Antoine Pouligny"; a very long name wraps. */
+.feed__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.feed__label {
+  position: sticky;
+  top: calc((var(--nav-h) - 1.2em) / 2); /* text on the same line as the nav's */
+  z-index: 1;
+  max-width: calc(var(--nav-gap) + 3em);
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 6px;
+}
+
+.feed__line {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.75em;
+}
+
+.feed__subtitle,
+.feed__year,
+.feed__count {
+  font-style: italic;
+}
+
+.feed__img {
+  display: block;
+  height: 75vh;
+  height: 75svh;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.feed__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ---------------------------------------------------------------------------
+   Index: every image in a top-aligned grid */
+
+.index {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 32px;
+  align-items: start;
+  padding: calc(var(--nav-h) * 1.5) var(--page-mg) calc(var(--nav-h) * 2);
+}
+
+/* Every photo sits centred in the same square frame: landscapes fill its width, portraits its
+   height, so rows and columns stay perfectly even whatever the orientation. */
+.index__thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+}
+
+.index__thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
+body[data-view="feed"] .index,
+body[data-view="index"] .feed {
+  display: none;
+}
+
+.empty {
+  padding: 30vh var(--page-mg);
+  text-align: center;
+  font-style: italic;
+}
+
+/* ---------------------------------------------------------------------------
+   Full-screen viewer */
+
+.zoom,
+.about {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--fade),
+    visibility var(--fade);
+}
+
+body[data-zoom] .zoom,
+body[data-about] .about {
+  opacity: 1;
+  visibility: visible;
+}
+
+.zoom {
+  z-index: 10;
+  background: var(--bg);
+}
+
+/* The stage covers the whole screen and pads the photo in, so the header and bottom-bar strips
+   count as "above / below the photo" (the Close zone, see site.ts) */
+.zoom__stage {
+  position: absolute;
+  inset: 0;
+  padding: var(--nav-h) var(--page-mg);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Fills the stage and draws the photo contained in it, so where the photo lands is known before
+   it has loaded (the open / close animations in site.ts rely on this) */
+.zoom__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.25s var(--ease);
+}
+
+.zoom__img.is-loaded {
+  opacity: 1;
+}
+
+/* Hidden while a copy of the photo flies in or out */
+.zoom__img.is-hidden {
+  opacity: 0;
+  transition: none;
+}
+
+/* The photo while it flies between its thumbnail / cover and the viewer (fly.ts) */
+.zoom-fly {
+  position: fixed;
+  z-index: 15;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.zoom__bar {
+  position: absolute;
+  inset: auto 0 0;
+  display: grid;
+  /* Photo number, then caption and EXIF beside it, bottom left */
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 1.5em;
+  align-items: center;
+  height: var(--nav-h);
+  padding: 0 var(--page-mg);
+  pointer-events: none; /* text only: clicks go through to the stage's Close zone */
+}
+
+.zoom__num {
+  grid-column: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 1em;
+}
+
+.zoom__count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Phones only */
+.zoom__exif-btn {
+  display: none;
+  pointer-events: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: var(--weight);
+  transition: font-weight 0.3s var(--ease);
+  cursor: pointer;
+}
+
+.zoom__exif-btn:hover {
+  font-weight: var(--weight-hover);
+}
+
+/* Desktop shows the collection top left in the nav instead */
+.zoom__title {
+  display: none;
+}
+
+.zoom__meta {
+  grid-column: 2;
+  display: flex;
+  gap: 1.5em;
+  min-width: 0;
+}
+
+.zoom__caption:empty {
+  display: none;
+}
+
+.zoom__exif {
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zoom__cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .zoom__stage {
+    cursor: none;
+  }
+
+  .zoom__cursor.is-visible {
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   About overlay */
+
+.about {
+  z-index: 20;
+  overflow-y: auto;
+  background: var(--overlay);
+}
+
+.about__inner {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  column-gap: var(--page-mg);
+  row-gap: calc(var(--page-mg) * 3);
+  padding: calc(var(--nav-h) * 2) var(--page-mg);
+}
+
+.about__desc {
+  grid-column: 4 / 11;
+  font-size: clamp(22px, 2.4vw, 36px);
+  line-height: 1.15;
+}
+
+.about__list {
+  grid-column: 4 / 11;
+}
+
+.about__section-lbl {
+  font-style: italic;
+}
+
+.about__link {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive */
+
+@media (max-width: 1400px) {
+  .index {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (max-width: 1100px) {
+  .index {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .feed__img {
+    height: 60vh;
+    height: 60svh;
+  }
+}
+
+@media (max-width: 768px) {
+  .zoom__bar,
+  .about__inner {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  /* Phones: just the name on the left, About and the toggle on the right */
+  .nav {
+    --nav-gap: 24px;
+    grid-template-columns: 1fr auto;
+  }
+  .nav__count,
+  .marquee {
+    display: none;
+  }
+
+  /* The name takes the nav's left side on phones, so labels stick just below the nav */
+  .feed__label {
+    top: var(--nav-h);
+    max-width: none;
+  }
+
+  .feed {
+    gap: calc(var(--page-mg) * 3);
+  }
+
+  .feed__img {
+    width: 100%;
+    height: auto;
+    max-height: 75svh;
+  }
+
+  .index {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .zoom__stage {
+    padding-bottom: 96px;
+  }
+
+  .zoom__bar {
+    height: auto;
+    column-gap: var(--page-mg);
+    padding-bottom: var(--page-mg);
+    row-gap: 4px;
+  }
+
+  .zoom__num {
+    grid-column: 1 / 4;
+    grid-row: 2;
+  }
+
+  .zoom__exif-btn {
+    display: inline;
+  }
+
+  .zoom__exif {
+    display: none;
+  }
+
+  .zoom.is-exif .zoom__exif {
+    display: block;
+  }
+
+  .zoom__title {
+    display: block;
+    grid-row: 2;
+    grid-column: 4 / 7;
+    text-align: right;
+  }
+
+  /* Caption and EXIF sit above the number row */
+  .zoom__meta {
+    grid-row: 1;
+    grid-column: 1 / 7;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .zoom__exif {
+    white-space: normal;
+  }
+
+  .about__desc,
+  .about__list {
+    grid-column: 1 / 7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+
+  .marquee__track {
+    animation: none;
+  }
+}

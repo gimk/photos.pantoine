@@ -1,0 +1,79 @@
+---
+interface Props {
+  totalPhotos: number;
+}
+
+const { totalPhotos } = Astro.props;
+const marqueeText = "photos.pantoine.com.".repeat(8);
+---
+
+<!--
+  Three parts: [count · name] on the left, the marquee centred on the page, [About · toggle]
+  on the right. Every label that can appear in a slot is rendered up front; site.css shows
+  the right one based on the body's data-view / data-zoom / data-about attributes.
+-->
+<nav class="nav">
+  <div class="nav__group nav__group--left">
+    <div class="nav__slot nav__count">
+      <p class="nav__label nav__label--count">
+        {totalPhotos} {totalPhotos === 1 ? "Image" : "Images"}
+      </p>
+      <!-- Collection of the index thumbnail under the pointer, or of the photo open in the
+           viewer; filled in by site.ts -->
+      <p class="nav__label nav__label--collection">
+        <span data-collection-title></span>
+        <span class="label-date" data-collection-date></span>
+      </p>
+    </div>
+    <div class="nav__slot nav__title">
+      <a href="./" class="nav__label nav__link" data-nav="index" data-text="Antoine Pouligny">
+        Antoine Pouligny
+      </a>
+    </div>
+  </div>
+
+  <!-- Two identical copies scroll by exactly one copy's width, so the loop is seamless -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee__track">
+      {
+        [0, 1].map(() => (
+          <span class="marquee__copy">{marqueeText}</span>
+        ))
+      }
+    </div>
+  </div>
+
+  <div class="nav__group nav__group--right">
+    <div class="nav__slot nav__middle">
+      <button type="button" class="nav__label nav__link" data-nav="about" data-text="About">
+        About
+      </button>
+    </div>
+    <div class="nav__slot nav__right">
+      <a
+        href="#feed"
+        class="nav__label nav__link nav__label--open-feed"
+        data-nav="feed"
+        data-text="Collections (+)"
+      >
+        Collections (+)
+      </a>
+      <a
+        href="./"
+        class="nav__label nav__link nav__label--close-feed"
+        data-nav="index"
+        data-text="Collections (−)"
+      >
+        Collections (&minus;)
+      </a>
+      <button
+        type="button"
+        class="nav__label nav__link nav__label--close"
+        data-nav="close"
+        data-text="Close"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+</nav>

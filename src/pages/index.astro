@@ -1,0 +1,91 @@
+---
+// All axes (weight 100-900, optical size, softness, wonky), upright and italic
+import "@fontsource-variable/fraunces/full.css";
+import "@fontsource-variable/fraunces/full-italic.css";
+import "../styles/site.css";
+import { getImage } from "astro:assets";
+import Nav from "../components/Nav.astro";
+import Feed from "../components/Feed.astro";
+import IndexGrid from "../components/IndexGrid.astro";
+import Zoom from "../components/Zoom.astro";
+import About from "../components/About.astro";
+import { getSeries } from "../lib/photos";
+import { formatExifLine, formatMonthYear } from "../utils/formatters";
+
+const series = await getSeries();
+const totalPhotos = series.reduce((n, s) => n + s.photos.length, 0);
+
+// Everything the full-screen viewer needs, in feed/index order.
+// Full-size images are generated here but only fetched by the browser on demand.
+const galleryData = await Promise.all(
+  series.flatMap((s) =>
+    s.photos.map(async (photo) => {
+      const full = await getImage({
+        src: photo.src,
+        widths: [1200, 2000, 3000],
+        format: "webp",
+      });
+      return {
+        slug: s.slug,
+        index: photo.indexInSeries,
+        count: s.photos.length,
+        title: s.title,
+        date: formatMonthYear(s.date),
+        caption: photo.caption,
+        exif: formatExifLine(photo.exif),
+        alt: photo.alt,
+        color: photo.color,
+        width: photo.width,
+        height: photo.height,
+        src: full.src,
+        srcset: full.srcSet.attribute,
+      };
+    }),
+  ),
+);
+
+const ogImage = series[0]
+  ? await getImage({ src: series[0].cover.src, width: 1200, format: "jpg" })
+  : null;
+
+const description = "Photographs by Antoine Pouligny, grouped in collections.";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon-light.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Photos | Pantoine.com</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content="Photos Pantoine - Antoine Pouligny" />
+    <meta property="og:description" content={description} />
+    {ogImage && <meta property="og:image" content={new URL(ogImage.src, Astro.site)} />}
+    <meta property="og:type" content="website" />
+  </head>
+  <body data-view="index">
+    <Nav totalPhotos={totalPhotos} />
+
+    <main class="main">
+      {
+        series.length > 0 ? (
+          <>
+            <Feed series={series} />
+            <IndexGrid series={series} />
+          </>
+        ) : (
+          <p class="empty">
+            No photos yet. Add a folder of JPEGs to <code>src/photos/</code>.
+          </p>
+        )
+      }
+    </main>
+
+    <Zoom />
+    <About />
+
+    <script type="application/json" id="gallery-data" set:html={JSON.stringify(galleryData).replace(/</g, "\\u003c")} />
+    <script src="../scripts/site.ts"></script>
+  </body>
+</html>

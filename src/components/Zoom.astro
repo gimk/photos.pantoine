@@ -1,0 +1,29 @@
+---
+// Full-screen viewer. Empty at build time: site.ts fills it from the #gallery-data JSON,
+// so full-size images are only downloaded when someone opens them.
+---
+
+<div class="zoom" aria-hidden="true" role="dialog" aria-label="Photo viewer">
+  <div class="zoom__stage" data-zoom-stage>
+    <img class="zoom__img" data-zoom-img alt="" />
+  </div>
+
+  <div class="zoom__bar">
+    <div class="zoom__num">
+      <p class="zoom__count" data-zoom-count></p>
+      <!-- Phones only: reveals the EXIF line -->
+      <button type="button" class="zoom__exif-btn" data-zoom-exif-btn aria-expanded="false">EXIF</button>
+    </div>
+    <!-- Phones only: on desktop the collection shows top left in the nav -->
+    <p class="zoom__title">
+      <span data-zoom-title></span>
+      <span class="label-date" data-zoom-date></span>
+    </p>
+    <p class="zoom__meta">
+      <span class="zoom__caption" data-zoom-caption></span>
+      <span class="zoom__exif" data-zoom-exif></span>
+    </p>
+  </div>
+
+  <div class="zoom__cursor" data-zoom-cursor aria-hidden="true"></div>
+</div>

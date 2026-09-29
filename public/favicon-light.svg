@@ -1,0 +1,21 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g clip-path="url(#clip0_2563_10225)">
+<rect width="200" height="200" rx="100" fill="white" style="fill:white;fill-opacity:1;"/>
+<g id="Repeat group 1_inner" data-figma-trr="r9u1.3-0f">
+<path d="M136.263 -21.1656C142.948 -20.1614 147.961 -14.5232 148.176 -7.76606L149.756 41.8961C150.172 54.9758 134.013 61.4249 125.309 51.653L74.4854 -5.40579C65.7729 -15.1872 74.0655 -30.508 87.0192 -28.5623L136.263 -21.1656Z" fill="black" style="fill:black;fill-opacity:1;"/>
+</g>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(87.552 -40.8262) rotate(40)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(180.863 -15.8236) rotate(80)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(236.272 63.3089) rotate(120)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(227.853 159.544) rotate(160)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(159.544 227.853) rotate(-160)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(63.3091 236.272) rotate(-120)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(-15.8234 180.863) rotate(-80)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(-40.8261 87.552) rotate(-40)"/>
+</g>
+<defs>
+<clipPath id="clip0_2563_10225">
+<rect width="200" height="200" rx="100" fill="white" style="fill:white;fill-opacity:1;"/>
+</clipPath>
+</defs>
+</svg>

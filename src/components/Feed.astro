@@ -1,0 +1,55 @@
+---
+import { Image } from "astro:assets";
+import type { Series } from "../lib/photos";
+import { formatMonthYear } from "../utils/formatters";
+
+interface Props {
+  series: Series[];
+}
+
+const { series } = Astro.props;
+
+// Covers are 75svh tall on desktop, so their rendered width follows their aspect ratio
+const coverSizes = (width: number, height: number) => {
+  const ratio = width / height;
+  return `(max-width: 768px) calc(100vw - 24px), ${Math.round(75 * ratio)}vh`;
+};
+---
+
+<section class="feed" aria-label="Collections">
+  {
+    series.map((s, i) => (
+      <article class="feed__item">
+        <p class="feed__label">
+          <span class="feed__line">
+            <span class="feed__title">{s.title}</span>
+            {s.subtitle && <span class="feed__subtitle">{s.subtitle}</span>}
+          </span>
+          <span class="feed__line">
+            {s.date && <span class="feed__year">{formatMonthYear(s.date)}</span>}
+            <span class="feed__count">
+              {s.photos.length} {s.photos.length === 1 ? "Image" : "Images"}
+            </span>
+          </span>
+        </p>
+        <a
+          href={`#${s.slug}/${s.cover.indexInSeries + 1}`}
+          class="feed__img"
+          style={`aspect-ratio: ${s.cover.width} / ${s.cover.height};`}
+          aria-label={`Open ${s.title}`}
+        >
+          <Image
+            src={s.cover.src}
+            alt={s.cover.alt}
+            widths={[600, 900, 1400, 2000]}
+            sizes={coverSizes(s.cover.width, s.cover.height)}
+            format="webp"
+            loading={i === 0 ? "eager" : "lazy"}
+            fetchpriority={i === 0 ? "high" : "auto"}
+            data-color={s.cover.color}
+          />
+        </a>
+      </article>
+    ))
+  }
+</section>
