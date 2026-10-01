@@ -383,5 +383,64 @@ stage.addEventListener("touchend", (e) => {
   }
 });
 
+// Index, hidden extra: dragging the marquee scrubs it by hand and changes the number of
+// columns, fewer to the right (bigger photos), more to the left. Not saved: a reload or a
+// double-click goes back to the stylesheet's columns.
+const marquee = document.querySelector<HTMLElement>(".marquee")!;
+const marqueeTrack = marquee.querySelector<HTMLElement>(".marquee__track")!;
+const indexEl = document.querySelector<HTMLElement>(".index")!;
+const COLUMN_STEP = 40; // px of drag per column
+let drag: { x: number; columns: number; time: number; anim: Animation | undefined } | null = null;
+let stylesheetGrid = { columns: 6, gap: 32 };
+
+marquee.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || view !== "index" || current !== -1 || body.hasAttribute("data-about")) return;
+  const anim = marqueeTrack.getAnimations()[0]; // none with reduced motion
+  anim?.pause();
+  const grid = getComputedStyle(indexEl);
+  const columns = grid.gridTemplateColumns.split(" ").length;
+  // Not changed by hand yet: what the stylesheet gives at this screen width
+  if (!indexEl.style.gridTemplateColumns) stylesheetGrid = { columns, gap: parseFloat(grid.columnGap) };
+  drag = {
+    x: e.clientX,
+    columns,
+    time: Number(anim?.currentTime ?? 0),
+    anim,
+  };
+  marquee.setPointerCapture(e.pointerId);
+  marquee.classList.add("is-dragging");
+});
+
+marquee.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x;
+  // The animation moves the track by half its width (one copy) per cycle, so a drag of dx px
+  // is dx / halfWidth of a cycle; wrapping keeps the loop seamless
+  const anim = drag.anim;
+  const duration = Number(anim?.effect?.getTiming().duration);
+  if (anim && duration) {
+    const t = drag.time - (dx / (marqueeTrack.offsetWidth / 2)) * duration;
+    anim.currentTime = ((t % duration) + duration) % duration;
+  }
+  const columns = Math.min(12, Math.max(3, drag.columns - Math.round(dx / COLUMN_STEP)));
+  indexEl.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+  // The spacing scales with the columns, like a zoom: half as many columns, twice the gap
+  indexEl.style.gap = `${Math.round((stylesheetGrid.gap * stylesheetGrid.columns) / columns)}px`;
+});
+
+function endDrag() {
+  if (!drag) return;
+  drag.anim?.play();
+  drag = null;
+  marquee.classList.remove("is-dragging");
+}
+marquee.addEventListener("pointerup", endDrag);
+marquee.addEventListener("pointercancel", endDrag);
+// Double-click: back to the stylesheet's columns and spacing
+marquee.addEventListener("dblclick", () => {
+  indexEl.style.removeProperty("grid-template-columns");
+  indexEl.style.removeProperty("gap");
+});
+
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 render();
