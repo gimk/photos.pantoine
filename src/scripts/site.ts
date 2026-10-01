@@ -146,7 +146,6 @@ function showPhoto(i: number) {
       showPlaceholder(null);
     } else showPlaceholder(photo);
     zoomEl.style.setProperty("--tint", photo.color);
-    setThemeColor(photo.color);
   }
 
   zoomFields.count.textContent = `${photo.index + 1} / ${photo.count}`;
@@ -195,24 +194,6 @@ function closeZoom() {
   flyOut(photo); // measures the viewer, so before it starts fading out
   body.removeAttribute("data-zoom");
   zoomEl.setAttribute("aria-hidden", "true");
-  setThemeColor(null);
-}
-
-// Phones: the browser's toolbar takes the open photo's colour, and goes back to its own once
-// the viewer closes
-let themeColor: HTMLMetaElement | null = null;
-function setThemeColor(color: string | null) {
-  if (!color) {
-    themeColor?.remove();
-    themeColor = null;
-    return;
-  }
-  if (!themeColor) {
-    themeColor = document.createElement("meta");
-    themeColor.name = "theme-color";
-    document.head.append(themeColor);
-  }
-  themeColor.content = color;
 }
 
 // ---------------------------------------------------------------------------
