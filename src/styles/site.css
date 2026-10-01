@@ -441,6 +441,7 @@ body:not([data-zoom]) .zoom * {
    background clears to show the page underneath, and the bar fades */
 .zoom {
   z-index: 10;
+  --tint-amount: 5%; /* also read by site.ts, for the phone toolbar */
   background: var(--bg);
   transition:
     opacity var(--fade),
@@ -452,7 +453,7 @@ body:not([data-zoom]) .zoom * {
   .zoom {
     background: color-mix(
       in srgb,
-      color-mix(in srgb, var(--tint) 5%, var(--bg)) calc((1 - var(--swipe, 0)) * 100%),
+      color-mix(in srgb, var(--tint) var(--tint-amount), var(--bg)) calc((1 - var(--swipe, 0)) * 100%),
       transparent
     );
   }

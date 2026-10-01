@@ -8,6 +8,18 @@ This is my personal photography portfolio website.
 - **Languages**: TypeScript, HTML, CSS
 - **Font**: [Fraunces](https://fonts.google.com/specimen/Fraunces) (variable weight and optical size), self-hosted via Fontsource
 - **Photo data**: EXIF read from the JPEGs at build time with [`exifr`](https://github.com/MikeKovarik/exifr)
+- **Photo colour**: each photo's colour picked at build time with [`node-vibrant`](https://github.com/Vibrant-Colors/node-vibrant) (see [Colour](#colour))
+
+## Colour
+
+Each photo gets one colour at build time: the most widespread swatch of its palette, as picked by `node-vibrant` (`src/lib/color.ts`). It's used in a few quiet places:
+
+- **Loading placeholder**: until a photo loads, its colour fills its place, in its shape. In the viewer, this only happens if the photo takes more than 200ms, and the photo then comes in out of a blur.
+- **Viewer background**: the viewer's black or white takes a 5% tint of the open photo's colour, easing from one photo's to the next.
+- **Phone toolbar**: the browser's toolbar follows the background: black on the index, white on the feed, tinted in the viewer.
+- **About palette**: every photo as a dot of its colour, in the collections' order. Clicking one opens its photo.
+
+To change the tint, edit `--tint-amount` on `.zoom` in `src/styles/site.css`.
 
 ## Adding photos
 

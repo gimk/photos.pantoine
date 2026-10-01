@@ -106,6 +106,28 @@ function setView(next: View) {
   view = next;
   body.dataset.view = next;
   window.scrollTo(0, scrollByView[next]);
+  updateThemeColor();
+}
+
+// Phones: the browser's toolbar follows the background, black on the index, white on the feed,
+// and in the viewer the page's background with the photo's tint, mixed as site.css mixes it
+const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+function updateThemeColor() {
+  if (!themeColor) return;
+  const bg = getComputedStyle(body).getPropertyValue("--bg").trim();
+  if (current === -1) {
+    themeColor.content = bg;
+    return;
+  }
+  const amount = parseFloat(getComputedStyle(zoomEl).getPropertyValue("--tint-amount")) / 100;
+  const [tint, base] = [photos[current].color, bg].map(rgbOf);
+  themeColor.content = `rgb(${tint.map((c, i) => Math.round(c * amount + base[i] * (1 - amount))).join(" ")})`;
+}
+
+// #rgb or #rrggbb to [r, g, b]
+function rgbOf(hex: string) {
+  const h = hex.length === 4 ? [...hex.slice(1)].map((c) => c + c).join("") : hex.slice(1);
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
 }
 
 function setAbout(open: boolean) {
@@ -146,6 +168,7 @@ function showPhoto(i: number) {
       showPlaceholder(null);
     } else showPlaceholder(photo);
     zoomEl.style.setProperty("--tint", photo.color);
+    updateThemeColor();
   }
 
   zoomFields.count.textContent = `${photo.index + 1} / ${photo.count}`;
@@ -194,6 +217,7 @@ function closeZoom() {
   flyOut(photo); // measures the viewer, so before it starts fading out
   body.removeAttribute("data-zoom");
   zoomEl.setAttribute("aria-hidden", "true");
+  updateThemeColor();
 }
 
 // ---------------------------------------------------------------------------
