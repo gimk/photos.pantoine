@@ -262,10 +262,24 @@ body[data-view="index"]:not([data-zoom], [data-about]) .marquee {
     font-weight 0.3s var(--ease);
 }
 
-.nav__link:hover,
-.about__link:hover,
-.feed__item:has(.feed__img:hover) .feed__title {
-  font-weight: var(--weight-hover);
+@media (hover: hover) {
+  .nav__link:hover,
+  .about__link:hover,
+  .feed__item:has(.feed__img:hover) .feed__title {
+    font-weight: var(--weight-hover);
+  }
+}
+
+/* Touch screens have no hover (a tap would leave the text bold), so the text thickens while
+   pressed instead: quickly in, so even a short tap shows it, and back at the usual pace. Not
+   on feed covers: a scroll starting on one would flash its title. */
+@media (hover: none) {
+  .nav__link:active,
+  .about__link:active,
+  .zoom__exif-btn:active {
+    font-weight: var(--weight-hover);
+    transition-duration: 0.08s;
+  }
 }
 
 /* Always visible */
@@ -407,9 +421,33 @@ body[data-about] .about {
   visibility: visible;
 }
 
+/* --swipe (0 to 1, set by site.ts) grows as the photo is dragged up or down to close: the
+   background clears to show the page underneath, and the bar fades */
 .zoom {
   z-index: 10;
   background: var(--bg);
+}
+
+@supports (background: color-mix(in srgb, red 50%, transparent)) {
+  .zoom {
+    background: color-mix(in srgb, var(--bg) calc((1 - var(--swipe, 0)) * 100%), transparent);
+  }
+}
+
+.zoom__bar {
+  opacity: calc(1 - var(--swipe, 0));
+}
+
+/* A swipe let go short of its goal: everything eases back */
+.zoom.is-settling {
+  transition:
+    opacity var(--fade),
+    visibility var(--fade),
+    background-color 0.25s var(--ease);
+}
+
+.zoom.is-settling .zoom__bar {
+  transition: opacity 0.25s var(--ease);
 }
 
 /* The stage covers the whole screen and pads the photo in, so the header and bottom-bar strips
@@ -421,6 +459,27 @@ body[data-about] .about {
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: pinch-zoom; /* one-finger swipes are handled by site.ts */
+  /* One cell, so the photo and the swipe's next photo share the same box */
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+
+.zoom__img,
+.zoom__peek {
+  grid-area: 1 / 1;
+}
+
+.zoom__peek {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.zoom__peek.is-active {
+  visibility: visible;
 }
 
 /* Fills the stage and draws the photo contained in it, so where the photo lands is known before
@@ -489,8 +548,10 @@ body[data-about] .about {
   cursor: pointer;
 }
 
-.zoom__exif-btn:hover {
-  font-weight: var(--weight-hover);
+@media (hover: hover) {
+  .zoom__exif-btn:hover {
+    font-weight: var(--weight-hover);
+  }
 }
 
 /* Desktop shows the collection top left in the nav instead */
@@ -610,6 +671,24 @@ body[data-about] .about {
     display: none;
   }
 
+  /* Bigger tap areas, without moving anything: the padding is cancelled by the margin.
+     Sideways it stops at half of --nav-gap so About and the toggle don't overlap. */
+  .nav__link {
+    margin: -14px -12px;
+    padding: 14px 12px;
+  }
+
+  .about__link {
+    display: inline-block;
+    margin: -6px 0;
+    padding: 6px 0;
+  }
+
+  .zoom__exif-btn {
+    margin: -12px;
+    padding: 12px;
+  }
+
   /* The name takes the nav's left side on phones, so labels stick just below the nav */
   .feed__label {
     top: var(--nav-h);
@@ -630,8 +709,9 @@ body[data-about] .about {
     grid-template-columns: repeat(3, 1fr);
   }
 
+  /* The photo goes edge to edge */
   .zoom__stage {
-    padding-bottom: 96px;
+    padding: var(--nav-h) 0 96px;
   }
 
   .zoom__bar {

@@ -123,6 +123,10 @@ function showPhoto(i: number) {
     body.removeAttribute("data-hover");
     body.toggleAttribute("data-zoom", true);
     zoomEl.setAttribute("aria-hidden", "false");
+    // Undo a swipe-to-close, left in place so the viewer faded out as it was
+    zoomImg.style.transform = "";
+    zoomEl.classList.remove("is-settling");
+    zoomEl.style.removeProperty("--swipe");
   }
 
   if (i !== current) {
@@ -210,7 +214,11 @@ async function flyIn(source: HTMLImageElement, photo: GalleryPhoto) {
 
 // Closing: the photo flies back into its thumbnail (index) or cover (feed), scrolling it into view
 // first if needed. Without a matching image on the page, the viewer just fades out.
+let closeFrom = { x: 0, y: 0 }; // where a swipe-to-close left the photo, relative to its place
+
 function flyOut(photo: GalleryPhoto) {
+  const offset = closeFrom;
+  closeFrom = { x: 0, y: 0 };
   endFlight();
   if (reducedMotion() || !zoomImg.naturalWidth) return;
 
@@ -225,6 +233,8 @@ function flyOut(photo: GalleryPhoto) {
   if (box.bottom < 0 || box.top > window.innerHeight) target.scrollIntoView({ block: "center" });
 
   const from = viewerRect(photo);
+  from.left += offset.x;
+  from.top += offset.y;
   const to = containedRect(target.getBoundingClientRect(), ratioOf(photo));
   // Pinned to the page: if it's scrolled during the flight, the copy follows its thumbnail
   fly(
@@ -313,6 +323,10 @@ document.addEventListener("click", (e) => {
 
 window.addEventListener("popstate", render);
 
+// iOS Safari only applies :active (the press effect on touch screens, see site.css) on pages
+// that listen for touches
+document.addEventListener("touchstart", () => {}, { passive: true });
+
 // No dragging images or links out of the page (CSS covers Chrome/Safari; this covers Firefox)
 document.addEventListener("dragstart", (e) => e.preventDefault());
 
@@ -368,20 +382,149 @@ stage.addEventListener("pointermove", (e) => {
 });
 stage.addEventListener("pointerleave", () => cursor.classList.remove("is-visible"));
 
-// Horizontal swipe on touch screens
-let touchStartX: number | null = null;
-stage.addEventListener("touchstart", (e) => (touchStartX = e.touches[0].clientX), {
-  passive: true,
-});
+// Touch screens: the photo follows the finger. Let go far or fast enough and a sideways swipe
+// slides to the previous / next photo, an up or down one closes the viewer (the photo flies
+// back from where it was dropped). Otherwise it eases back into place.
+const SWIPE_DISTANCE = 60; // px
+const FLICK_SPEED = 0.4; // px/ms, so a short fast flick counts too
+const SWIPE_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+let swipe: { x: number; y: number; time: number; axis: "x" | "y" | null; dx: number; dy: number } | null =
+  null;
+let sliding = false;
+
+stage.addEventListener(
+  "touchstart",
+  (e) => {
+    zoomEl.classList.remove("is-settling");
+    const t = e.touches[0];
+    swipe =
+      e.touches.length === 1 && !sliding
+        ? { x: t.clientX, y: t.clientY, time: e.timeStamp, axis: null, dx: 0, dy: 0 }
+        : null;
+  },
+  { passive: true },
+);
+
+stage.addEventListener(
+  "touchmove",
+  (e) => {
+    if (!swipe) return;
+    if (e.touches.length > 1) return settleSwipe(); // a pinch: leave it to the browser
+    const dx = e.touches[0].clientX - swipe.x;
+    const dy = e.touches[0].clientY - swipe.y;
+    if (!swipe.axis) {
+      if (Math.hypot(dx, dy) < 10) return;
+      swipe.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    e.preventDefault();
+    swipe.dx = dx;
+    swipe.dy = dy;
+    if (swipe.axis === "x") {
+      const delta = dx < 0 ? 1 : -1;
+      showPeek(delta);
+      zoomImg.style.transform = `translateX(${dx}px)`;
+      peek.style.transform = `translateX(${dx + peekOffset(delta)}px)`;
+    } else {
+      zoomImg.style.transform = `translateY(${dy}px)`;
+      zoomEl.style.setProperty("--swipe", String(Math.min(1, Math.abs(dy) / 300)));
+    }
+  },
+  { passive: false },
+);
+
 stage.addEventListener("touchend", (e) => {
-  if (touchStartX === null) return;
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  touchStartX = null;
-  if (Math.abs(dx) > 50) {
-    e.preventDefault(); // don't also fire the click-to-step
-    step(dx < 0 ? 1 : -1);
+  const s = swipe;
+  swipe = null;
+  if (!s?.axis) return; // a tap: the click handler steps or closes
+  e.preventDefault(); // no click after a swipe
+  const distance = s.axis === "x" ? s.dx : s.dy;
+  const speed = Math.abs(distance) / (e.timeStamp - s.time);
+  const far = Math.abs(distance) > SWIPE_DISTANCE || (Math.abs(distance) > 20 && speed > FLICK_SPEED);
+  if (!far) settleSwipe();
+  else if (s.axis === "x") slide(distance < 0 ? 1 : -1);
+  else {
+    closeFrom = { x: 0, y: s.dy };
+    exitZoom();
   }
 });
+stage.addEventListener("touchcancel", () => {
+  swipe = null;
+  settleSwipe();
+});
+
+// The neighbour in the swipe's direction waits just off the side of the photo, PEEK_GAP away,
+// and moves with it
+const peek = document.querySelector<HTMLImageElement>("[data-zoom-peek]")!;
+const PEEK_GAP = 24; // px
+const peekOffset = (delta: number) => delta * (contentBox(stage).width + PEEK_GAP);
+let peekDelta = 0; // the neighbour shown: 1 next, -1 previous, 0 none
+
+function showPeek(delta: 1 | -1) {
+  if (delta === peekDelta) return;
+  peekDelta = delta;
+  const photo = photos[neighbour(current, delta)];
+  // Shown once loaded, so a direction change never flashes the other neighbour
+  peek.classList.remove("is-active");
+  peek.onload = () => peek.classList.add("is-active");
+  peek.alt = photo.alt;
+  peek.sizes = "100vw"; // as the viewer image, so the swap after the slide hits the cache
+  peek.srcset = photo.srcset;
+  peek.src = photo.src;
+  if (peek.complete && peek.naturalWidth) peek.classList.add("is-active");
+}
+
+function hidePeek() {
+  peekDelta = 0;
+  peek.onload = null;
+  peek.classList.remove("is-active");
+  peek.style.transform = "";
+}
+
+// Animates `el` from where it is to `to`
+function ease(el: HTMLElement, to: string, duration: number) {
+  const from = el.style.transform || "none";
+  el.style.transform = to === "none" ? "" : to;
+  return el
+    .animate([{ transform: from }, { transform: to }], { duration, easing: SWIPE_EASE })
+    .finished.catch(() => {});
+}
+
+async function settleSwipe() {
+  swipe = null;
+  sliding = true;
+  zoomEl.classList.add("is-settling");
+  zoomEl.style.removeProperty("--swipe");
+  await Promise.all([
+    ease(zoomImg, "none", 300),
+    peekDelta ? ease(peek, `translateX(${peekOffset(peekDelta)}px)`, 300) : null,
+  ]);
+  hidePeek();
+  sliding = false;
+}
+
+// The photo and its neighbour carry on the way they were going, until the neighbour is in place
+async function slide(delta: 1 | -1) {
+  sliding = true;
+  await Promise.all([
+    ease(zoomImg, `translateX(${-peekOffset(delta)}px)`, 300),
+    ease(peek, "none", 300),
+  ]);
+
+  // The neighbour now covers the viewer image: switch that to the new photo underneath (no fade),
+  // and drop the neighbour once it's painted, so there's never a frame with neither
+  zoomImg.classList.add("is-hidden");
+  zoomImg.style.transform = "";
+  step(delta);
+  await loaded(zoomImg);
+  await zoomImg.decode().catch(() => {});
+  zoomImg.style.transition = "none";
+  zoomImg.classList.add("is-loaded");
+  zoomImg.classList.remove("is-hidden");
+  await painted();
+  zoomImg.style.transition = "";
+  hidePeek();
+  sliding = false;
+}
 
 // Index, hidden extra: dragging the marquee scrubs it by hand and changes the number of
 // columns, fewer to the right (bigger photos), more to the left. Not saved: a reload or a
