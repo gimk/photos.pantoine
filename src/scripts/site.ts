@@ -215,18 +215,30 @@ async function flyIn(source: HTMLImageElement, photo: GalleryPhoto) {
 // Closing: the photo flies back into its thumbnail (index) or cover (feed), scrolling it into view
 // first if needed. Without a matching image on the page, the viewer just fades out.
 let closeFrom = { x: 0, y: 0 }; // where a swipe-to-close left the photo, relative to its place
+let swipeHidden: HTMLImageElement | null = null; // its page image, hidden during that swipe
 
-function flyOut(photo: GalleryPhoto) {
-  const offset = closeFrom;
-  closeFrom = { x: 0, y: 0 };
-  endFlight();
-  if (reducedMotion() || !zoomImg.naturalWidth) return;
-
+// The photo's thumbnail (index) or cover (feed) on the page under the viewer, if it has one
+function pageImage(photo: GalleryPhoto) {
   const href = `#${photo.slug}/${photo.index + 1}`;
   const link = [...document.querySelectorAll<HTMLAnchorElement>(`.${view} a[href^="#"]`)].find(
     (a) => a.getAttribute("href") === href,
   );
-  const target = link?.querySelector("img");
+  return link?.querySelector("img") ?? null;
+}
+
+function flyOut(photo: GalleryPhoto) {
+  const offset = closeFrom;
+  closeFrom = { x: 0, y: 0 };
+  // Hidden by a swipe-to-close: the flight below shows it again once landed
+  const hidden = swipeHidden;
+  swipeHidden = null;
+  endFlight();
+  if (reducedMotion() || !zoomImg.naturalWidth) {
+    if (hidden) hidden.style.visibility = "";
+    return;
+  }
+
+  const target = pageImage(photo);
   if (!target) return;
 
   const box = target.getBoundingClientRect();
@@ -415,6 +427,12 @@ stage.addEventListener(
     if (!swipe.axis) {
       if (Math.hypot(dx, dy) < 10) return;
       swipe.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      // Closing clears the background to the page: hide the photo's own thumbnail there, which
+      // the photo will fly back into, so it isn't seen twice
+      if (swipe.axis === "y") {
+        swipeHidden = pageImage(photos[current]);
+        if (swipeHidden) swipeHidden.style.visibility = "hidden";
+      }
     }
     e.preventDefault();
     swipe.dx = dx;
@@ -492,6 +510,8 @@ function ease(el: HTMLElement, to: string, duration: number) {
 async function settleSwipe() {
   swipe = null;
   sliding = true;
+  if (swipeHidden) swipeHidden.style.visibility = "";
+  swipeHidden = null;
   zoomEl.classList.add("is-settling");
   zoomEl.style.removeProperty("--swipe");
   await Promise.all([
