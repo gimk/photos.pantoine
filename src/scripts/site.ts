@@ -226,10 +226,17 @@ function flyOut(photo: GalleryPhoto) {
 
   const from = viewerRect(photo);
   const to = containedRect(target.getBoundingClientRect(), ratioOf(photo));
-  fly(zoomImg.currentSrc || zoomImg.src, from, to, () => {
-    zoomImg.classList.add("is-hidden");
-    target.style.visibility = "hidden";
-  }).then(async (copy) => {
+  // Pinned to the page: if it's scrolled during the flight, the copy follows its thumbnail
+  fly(
+    zoomImg.currentSrc || zoomImg.src,
+    from,
+    to,
+    () => {
+      zoomImg.classList.add("is-hidden");
+      target.style.visibility = "hidden";
+    },
+    true,
+  ).then(async (copy) => {
     // The thumbnail reappears under the landed copy first, then the copy goes
     target.style.visibility = "";
     await painted();

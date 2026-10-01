@@ -47,15 +47,25 @@ export const painted = () =>
  * and drawn at `from`: that's when the caller can hide the original without a blank frame.
  * Resolves with the copy still in place at `to`, so the caller can swap in the real image
  * underneath before calling `remove()` on it.
+ * With `onPage`, the copy is pinned to the page rather than the viewport, so if the page scrolls
+ * during the flight the copy scrolls with it and still lands on its target.
  */
-export async function fly(src: string, from: Rect, to: Rect, onReady: () => void): Promise<HTMLImageElement> {
+export async function fly(
+  src: string,
+  from: Rect,
+  to: Rect,
+  onReady: () => void,
+  onPage = false,
+): Promise<HTMLImageElement> {
   const copy = new Image();
   copy.src = src;
   copy.className = "zoom-fly";
   const start = `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`;
+  const [dx, dy] = onPage ? [window.scrollX, window.scrollY] : [0, 0];
   Object.assign(copy.style, {
-    left: `${to.left}px`,
-    top: `${to.top}px`,
+    position: onPage ? "absolute" : "",
+    left: `${to.left + dx}px`,
+    top: `${to.top + dy}px`,
     width: `${to.width}px`,
     height: `${to.height}px`,
     transform: start,
