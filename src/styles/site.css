@@ -421,6 +421,13 @@ body[data-about] .about {
   visibility: visible;
 }
 
+/* While the viewer fades out, touches and clicks already go to the page, so it can be
+   scrolled during the closing animation */
+body:not([data-zoom]) .zoom,
+body:not([data-zoom]) .zoom * {
+  pointer-events: none;
+}
+
 /* --swipe (0 to 1, set by site.ts) grows as the photo is dragged up or down to close: the
    background clears to show the page underneath, and the bar fades */
 .zoom {
