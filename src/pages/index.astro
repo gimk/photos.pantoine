@@ -83,7 +83,7 @@ const description = "Photographs by Antoine Pouligny, grouped in collections.";
     </main>
 
     <Zoom />
-    <About />
+    <About series={series} />
 
     <script type="application/json" id="gallery-data" set:html={JSON.stringify(galleryData).replace(/</g, "\\u003c")} />
     <script src="../scripts/site.ts"></script>

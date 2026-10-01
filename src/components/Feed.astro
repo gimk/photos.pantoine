@@ -2,6 +2,7 @@
 import { Image } from "astro:assets";
 import type { Series } from "../lib/photos";
 import { formatMonthYear } from "../utils/formatters";
+import { placeholderStyle } from "../utils/placeholder";
 
 interface Props {
   series: Series[];
@@ -46,6 +47,7 @@ const coverSizes = (width: number, height: number) => {
             format="webp"
             loading={i === 0 ? "eager" : "lazy"}
             fetchpriority={i === 0 ? "high" : "auto"}
+            style={placeholderStyle(s.cover.color, s.cover.width, s.cover.height)}
             data-color={s.cover.color}
           />
         </a>

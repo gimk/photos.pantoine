@@ -9,7 +9,7 @@ This project is a personal photography portfolio website built with Astro. Its l
 - **Interactions**: Client-side TypeScript (`src/scripts/site.ts`)
 - **Data Source**: JPEGs in `src/photos/<series>/`, with an optional `series.json` per folder (see README.md). They're 3000px web masters made by `npm run photos` (`scripts/optimize-photos.mjs`) from full-size camera files in the git-ignored `originals/` folder.
 - **Metadata**: `exifr` reads camera, lens and exposure data from the original files at build time. GPS is never read.
-- **Color Extraction**: `node-vibrant` extracts each photo's "Vibrant" swatch at build time. It's exposed as `data-color` but not used by the design yet.
+- **Color Extraction**: `node-vibrant` extracts each photo's most populous palette swatch at build time. It's used as the loading placeholder, the viewer's background tint, the phone toolbar colour and the About palette.
 - **Architecture**:
     - A single page (`src/pages/index.astro`). Views are driven by attributes on `<body>`: `data-view="feed|index"`, `data-zoom` and `data-about`.
     - The index (all photos) is the home page. The URL hash mirrors the state: `#feed` for the series feed, or `#<series-slug>/<n>` for the viewer.

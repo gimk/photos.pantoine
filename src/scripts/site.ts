@@ -9,6 +9,7 @@
 //   (none) -> index (home), #feed -> feed, #<series-slug>/<n> -> viewer on photo n (1-based)
 
 import { containedRect, contentBox, fly, painted, reducedMotion } from "./fly";
+import { placeholderImage } from "../utils/placeholder";
 
 interface GalleryPhoto {
   slug: string;
@@ -131,8 +132,8 @@ function showPhoto(i: number) {
 
   if (i !== current) {
     current = i;
-    zoomImg.classList.remove("is-loaded");
-    zoomImg.onload = () => zoomImg.classList.add("is-loaded");
+    zoomImg.classList.remove("is-loaded", "is-slow");
+    zoomImg.onload = photoLoaded;
     zoomEl.classList.remove("is-exif");
     exifButton.setAttribute("aria-expanded", "false");
     zoomImg.alt = photo.alt;
@@ -140,7 +141,12 @@ function showPhoto(i: number) {
     zoomImg.srcset = photo.srcset;
     zoomImg.src = photo.src;
     zoomImg.dataset.color = photo.color;
-    if (zoomImg.complete) zoomImg.classList.add("is-loaded");
+    if (zoomImg.complete) {
+      zoomImg.classList.add("is-loaded");
+      showPlaceholder(null);
+    } else showPlaceholder(photo);
+    zoomEl.style.setProperty("--tint", photo.color);
+    setThemeColor(photo.color);
   }
 
   zoomFields.count.textContent = `${photo.index + 1} / ${photo.count}`;
@@ -154,6 +160,33 @@ function showPhoto(i: number) {
   preload(neighbour(i, -1));
 }
 
+// A photo that takes a while to load shows its colour in its place meanwhile (see .zoom__stage
+// in site.css), then comes in out of a blur over it. Only after PLACEHOLDER_DELAY: most photos
+// (preloaded neighbours) are drawn within a frame or two, and showing the colour straight away
+// would flash it, in the new photo's shape. The colour is dropped once the photo is in, so it
+// can't show as a fringe round the photo or behind it during a swipe.
+const PLACEHOLDER_DELAY = 200; // ms
+let placeholderTimer = 0;
+
+function showPlaceholder(photo: GalleryPhoto | null) {
+  clearTimeout(placeholderTimer);
+  stage.style.removeProperty("--placeholder");
+  if (!photo) return;
+  placeholderTimer = window.setTimeout(() => {
+    stage.style.setProperty("--placeholder", placeholderImage(photo.color, photo.width, photo.height));
+    zoomImg.classList.add("is-slow");
+  }, PLACEHOLDER_DELAY);
+}
+
+async function photoLoaded() {
+  clearTimeout(placeholderTimer);
+  const shown = current;
+  zoomImg.classList.add("is-loaded");
+  await painted();
+  await Promise.all(zoomImg.getAnimations().map((a) => a.finished.catch(() => {})));
+  if (current === shown) stage.style.removeProperty("--placeholder");
+}
+
 function closeZoom() {
   if (current === -1) return;
   const photo = photos[current];
@@ -162,6 +195,24 @@ function closeZoom() {
   flyOut(photo); // measures the viewer, so before it starts fading out
   body.removeAttribute("data-zoom");
   zoomEl.setAttribute("aria-hidden", "true");
+  setThemeColor(null);
+}
+
+// Phones: the browser's toolbar takes the open photo's colour, and goes back to its own once
+// the viewer closes
+let themeColor: HTMLMetaElement | null = null;
+function setThemeColor(color: string | null) {
+  if (!color) {
+    themeColor?.remove();
+    themeColor = null;
+    return;
+  }
+  if (!themeColor) {
+    themeColor = document.createElement("meta");
+    themeColor.name = "theme-color";
+    document.head.append(themeColor);
+  }
+  themeColor.content = color;
 }
 
 // ---------------------------------------------------------------------------
@@ -191,6 +242,7 @@ const loaded = (img: HTMLImageElement) =>
 async function flyIn(source: HTMLImageElement, photo: GalleryPhoto) {
   if (reducedMotion()) return;
   endFlight();
+  showPlaceholder(null); // the thumbnail itself flies in and stands in for the photo
   const from = containedRect(source.getBoundingClientRect(), ratioOf(photo));
   zoomImg.classList.add("is-hidden");
   const copy = await fly(source.currentSrc || source.src, from, viewerRect(photo), () => {
@@ -323,6 +375,18 @@ document.addEventListener("click", (e) => {
     return;
   }
 
+  // About's palette: a square closes About and opens its photo over the page. With a photo
+  // already open, it takes that photo's place in the history, so one Close is always enough.
+  const swatch = target.closest<HTMLAnchorElement>(".about__swatch");
+  if (swatch) {
+    e.preventDefault();
+    setAbout(false);
+    const replace = current !== -1;
+    navigate(swatch.getAttribute("href")!, replace);
+    if (!replace) openedFromPage = true;
+    return;
+  }
+
   const link = target.closest<HTMLAnchorElement>('a[href^="#"]');
   if (link && (link.closest(".feed") || link.closest(".index"))) {
     e.preventDefault();
@@ -338,6 +402,20 @@ window.addEventListener("popstate", render);
 // iOS Safari only applies :active (the press effect on touch screens, see site.css) on pages
 // that listen for touches
 document.addEventListener("touchstart", () => {}, { passive: true });
+
+// Feed and index images show their colour in their place while they load (placeholder.ts).
+// Dropped once loaded, so it can't show as a fringe around the photo's antialiased edges.
+const dropPlaceholder = (img: HTMLImageElement) => img.style.removeProperty("background");
+document.addEventListener(
+  "load",
+  (e) => {
+    if (e.target instanceof HTMLImageElement && e.target.closest(".feed, .index")) dropPlaceholder(e.target);
+  },
+  true, // load doesn't bubble
+);
+document.querySelectorAll<HTMLImageElement>(".feed img, .index img").forEach((img) => {
+  if (img.complete && img.naturalWidth) dropPlaceholder(img);
+});
 
 // No dragging images or links out of the page (CSS covers Chrome/Safari; this covers Firefox)
 document.addEventListener("dragstart", (e) => e.preventDefault());

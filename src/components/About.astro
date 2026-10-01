@@ -1,4 +1,11 @@
 ---
+import type { Series } from "../lib/photos";
+
+interface Props {
+  series: Series[];
+}
+
+const { series } = Astro.props;
 ---
 
 <div class="about" aria-hidden="true" role="dialog" aria-label="About">
@@ -44,6 +51,26 @@
     <div class="about__list">
       <p class="about__section-lbl">Navigate</p>
       <p>&larr; &rarr; to browse, Esc to close, I to switch between index and collections.</p>
+    </div>
+
+    <!-- Every photo as its colour, in the collections' order; each opens its photo -->
+    <div class="about__palette-wrap">
+      <p class="about__section-lbl">Palette</p>
+      <div class="about__palette">
+        {
+          series.flatMap((s) =>
+            s.photos.map((photo) => (
+              <a
+                href={`#${s.slug}/${photo.indexInSeries + 1}`}
+                class="about__swatch"
+                style={`background: ${photo.color};`}
+                title={`${s.title}, ${photo.indexInSeries + 1}`}
+                aria-label={`${s.title}, image ${photo.indexInSeries + 1}`}
+              />
+            )),
+          )
+        }
+      </div>
     </div>
   </div>
 </div>

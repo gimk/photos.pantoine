@@ -2,6 +2,7 @@
 import { Image } from "astro:assets";
 import type { Series } from "../lib/photos";
 import { formatMonthYear } from "../utils/formatters";
+import { placeholderStyle } from "../utils/placeholder";
 
 interface Props {
   series: Series[];
@@ -28,7 +29,7 @@ const photos = series.flatMap((s) => s.photos.map((photo) => ({ photo, series: s
           sizes="(max-width: 768px) 33vw, (max-width: 1100px) 25vw, (max-width: 1400px) 20vw, 17vw"
           format="webp"
           loading="lazy"
-          style={`aspect-ratio: ${photo.width} / ${photo.height};`}
+          style={`aspect-ratio: ${photo.width} / ${photo.height}; ${placeholderStyle(photo.color, photo.width, photo.height)}`}
           data-color={photo.color}
         />
       </a>

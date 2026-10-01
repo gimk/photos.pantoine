@@ -428,16 +428,33 @@ body:not([data-zoom]) .zoom * {
   pointer-events: none;
 }
 
+/* --tint is the open photo's colour (set by site.ts): the background takes a touch of it, and
+   eases from one photo's to the next's. Registered as a colour so it can transition on its own,
+   while --swipe still follows the finger without lag. */
+@property --tint {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #808080;
+}
+
 /* --swipe (0 to 1, set by site.ts) grows as the photo is dragged up or down to close: the
    background clears to show the page underneath, and the bar fades */
 .zoom {
   z-index: 10;
   background: var(--bg);
+  transition:
+    opacity var(--fade),
+    visibility var(--fade),
+    --tint 0.8s var(--ease);
 }
 
 @supports (background: color-mix(in srgb, red 50%, transparent)) {
   .zoom {
-    background: color-mix(in srgb, var(--bg) calc((1 - var(--swipe, 0)) * 100%), transparent);
+    background: color-mix(
+      in srgb,
+      color-mix(in srgb, var(--tint) 5%, var(--bg)) calc((1 - var(--swipe, 0)) * 100%),
+      transparent
+    );
   }
 }
 
@@ -450,7 +467,8 @@ body:not([data-zoom]) .zoom * {
   transition:
     opacity var(--fade),
     visibility var(--fade),
-    background-color 0.25s var(--ease);
+    background-color 0.25s var(--ease),
+    --tint 0.8s var(--ease);
 }
 
 .zoom.is-settling .zoom__bar {
@@ -470,6 +488,9 @@ body:not([data-zoom]) .zoom * {
   /* One cell, so the photo and the swipe's next photo share the same box */
   display: grid;
   grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  /* While the photo loads, its colour in its place (site.ts sets --placeholder). The content
+     box is the photo's box, so `contain` lands it exactly where the photo will be. */
+  background: var(--placeholder, none) center / contain no-repeat content-box;
 }
 
 .zoom__img,
@@ -501,6 +522,19 @@ body:not([data-zoom]) .zoom * {
 
 .zoom__img.is-loaded {
   opacity: 1;
+}
+
+/* Slow to load (site.ts): its colour shows meanwhile, and once loaded it comes in out of a blur
+   over it. The blur only transitions on the way in, so it's set at once on the hidden photo. */
+.zoom__img.is-slow {
+  filter: blur(24px);
+}
+
+.zoom__img.is-slow.is-loaded {
+  filter: blur(0);
+  transition:
+    opacity 0.3s var(--ease),
+    filter 0.6s var(--ease);
 }
 
 /* Hidden while a copy of the photo flies in or out */
@@ -642,6 +676,34 @@ body:not([data-zoom]) .zoom * {
   text-underline-offset: 3px;
 }
 
+/* Every photo as a small dot of its colour, in the same column as the text above it */
+.about__palette-wrap {
+  grid-column: 4 / 11;
+}
+
+.about__palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: calc(var(--page-mg) * 0.75);
+}
+
+.about__swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transition: transform 0.2s var(--ease);
+  /* Each dot keeps its own layer: promoting one only while it scales made the browser rebuild
+     the overlay under the nav's blended text, which flickered the background */
+  will-change: transform;
+}
+
+@media (hover: hover) {
+  .about__swatch:hover {
+    transform: scale(1.8);
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Responsive */
 
@@ -765,7 +827,8 @@ body:not([data-zoom]) .zoom * {
   }
 
   .about__desc,
-  .about__list {
+  .about__list,
+  .about__palette-wrap {
     grid-column: 1 / 7;
   }
 }
