@@ -400,13 +400,9 @@ body[data-view="index"] .feed {
   scroll-margin-top: calc(var(--nav-h) + var(--page-mg));
 }
 
-.index__thumb {
-  scroll-margin-top: calc(var(--nav-h) * 2.5);
-}
-
 /* ---------------------------------------------------------------------------
-   Timeline: one thin line per collection, centred on the right edge (mouse only), under year
-   headings. Hovering it spreads it out and shows the years and every collection's name.
+   Timeline: one thin line per collection, centred on the feed's right edge (mouse only), under
+   year headings. Hovering it spreads it out and shows the years and every collection's name.
    site.ts lays the rows out (--y, and the timeline's --height). */
 
 /* Registered so it eases on its own, and the rows follow */
@@ -457,6 +453,7 @@ body[data-view="index"] .feed {
   }
 }
 
+body[data-view="index"] .timeline,
 body[data-zoom] .timeline,
 body[data-about] .timeline {
   opacity: 0;

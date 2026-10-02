@@ -18,7 +18,6 @@ const photos = series.flatMap((s) => s.photos.map((photo) => ({ photo, series: s
       <a
         href={`#${s.slug}/${photo.indexInSeries + 1}`}
         class="index__thumb"
-        data-slug={s.slug}
         data-collection={s.title}
         data-collection-date={formatMonthYear(s.date)}
         aria-label={`${s.title}, image ${photo.indexInSeries + 1}`}

@@ -697,7 +697,7 @@ marquee.addEventListener("dblclick", () => {
   indexEl.style.removeProperty("gap");
 });
 
-// Timeline: one line per collection on the right edge, under year headings
+// Timeline: one line per collection on the feed's right edge, under year headings
 // (site.css). It spreads out while hovered, showing every name; a click scrolls to the
 // collection under the pointer.
 const timeline = document.querySelector<HTMLElement>(".timeline");
@@ -767,9 +767,9 @@ if (timeline) {
   });
   timeline.addEventListener("focusout", () => focus(null));
 
-  // The collection's cover in the feed, or its first thumbnail in the index
+  // The collection's cover in the feed
   const targetOf = (slug: string) =>
-    document.querySelector<HTMLElement>(`.${view} [data-slug="${CSS.escape(slug)}"]`);
+    document.querySelector<HTMLElement>(`.feed [data-slug="${CSS.escape(slug)}"]`);
 
   timeline.addEventListener("click", () => {
     const slug = items[focused]?.dataset.timelineSlug;
