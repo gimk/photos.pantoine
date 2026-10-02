@@ -1,6 +1,7 @@
 # photos.pantoine.com
 
 This is my personal photography portfolio website.
+Feel free to use it as a template for yours !
 
 ## Tech Used
 
