@@ -1,8 +1,8 @@
 {
+  "//": "Empty fields use the default, see README.md. To choose the cover, name a photo cover.jpg.",
   "title": "",
   "subtitle": "",
   "date": "",
-  "cover": "",
   "order": null,
   "color": "",
   "photos": {
@@ -11,6 +11,14 @@
       "caption": ""
     },
     "P1007053.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "P1007057.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "P1007068.jpg": {
       "alt": "",
       "caption": ""
     },
@@ -26,7 +34,7 @@
       "alt": "",
       "caption": ""
     },
-    "P1007305.jpg": {
+    "P1007343.jpg": {
       "alt": "",
       "caption": ""
     }
