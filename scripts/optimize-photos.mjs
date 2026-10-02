@@ -12,9 +12,10 @@
 // Files the script doesn't handle (anything but JPEGs) are never touched.
 //
 // It also gives every collection a series.json with each editable field left empty, and adds
-// any new photo to it, keeping what's already filled in.
+// any new photo to it, keeping what's already filled in. Photos no longer in a collection's folder
+// are dropped from its series.json.
 //
-// It only ever adds or updates files in src/photos/, never deletes: originals/ is local to each
+// It never deletes photos in src/photos/: originals/ is local to each
 // machine (a fresh clone starts with it empty), so it can't be treated as the full list of photos.
 
 import fs from "node:fs";
@@ -113,7 +114,9 @@ for (const collection of fs.existsSync(ORIGINALS) ? fs.readdirSync(ORIGINALS, { 
 // Every collection gets a series.json listing everything that can be edited, left empty (empty
 // means the default, see README.md). An existing one only gains the fields and photos it lacks:
 // what's already filled in is kept.
-const blankSeries = () => ({ title: "", subtitle: "", date: "", cover: "", order: null, color: "", photos: {} });
+const COMMENT =
+  "Empty fields use the default, see README.md. To choose the cover, name a photo cover.jpg.";
+const blankSeries = () => ({ "//": COMMENT, title: "", subtitle: "", date: "", order: null, color: "", photos: {} });
 const blankPhoto = () => ({ alt: "", caption: "" });
 let seriesWritten = 0;
 
@@ -132,13 +135,21 @@ for (const collection of fs.readdirSync(OUTPUT, { withFileTypes: true })) {
     .readdirSync(path.join(OUTPUT, collection.name))
     .filter(isJpeg)
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  for (const photo of photos) config.photos[photo] = { ...blankPhoto(), ...config.photos[photo] };
+  // Rebuilt from the folder, so photos deleted from it are dropped from series.json too
+  const listed = config.photos ?? {};
+  const gone = Object.keys(listed).filter((photo) => !photos.includes(photo));
+  config.photos = Object.fromEntries(photos.map((photo) => [photo, { ...blankPhoto(), ...listed[photo] }]));
+  config["//"] = COMMENT;
+  delete config.cover; // replaced by naming a photo cover.jpg
 
   const json = `${JSON.stringify(config, null, 2)}\n`;
   if (json === existing) continue;
   fs.writeFileSync(file, json);
   seriesWritten++;
-  console.log(`${collection.name}/series.json ${existing ? "updated" : "created"}`);
+  console.log(
+    `${collection.name}/series.json ${existing ? "updated" : "created"}` +
+      (gone.length ? ` (removed ${gone.join(", ")})` : ""),
+  );
 }
 
 console.log(

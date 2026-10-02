@@ -48,7 +48,6 @@ interface SeriesConfig {
   title?: string | null;
   subtitle?: string | null;
   date?: string | null; // "YYYY-MM", only used when no photo in the series has an EXIF date
-  cover?: string | null;
   order?: number | null;
   color?: string | null; // "#rrggbb", replaces the colour picked from the photos
   photos?: Record<string, { alt?: string | null; caption?: string | null }>;
@@ -127,7 +126,6 @@ async function loadSeries(): Promise<Series[]> {
     [...filesBySeries.entries()].map(async ([slug, keys]) => {
       const config = configModules[`/src/photos/${slug}/series.json`]?.default ?? {};
       const title = cleanString(config.title) ?? titleFromSlug(slug);
-      const coverFile = cleanString(config.cover);
 
       const photos: Photo[] = await Promise.all(
         keys.map(async (key) => {
@@ -168,7 +166,8 @@ async function loadSeries(): Promise<Series[]> {
         }),
       );
 
-      // A file named "cover" comes first; then chronological, falling back to filename
+      // A file named "cover" comes first and is the series' cover; then chronological, falling
+      // back to filename
       const isCover = (p: Photo) => path.parse(p.file).name.toLowerCase() === "cover";
       photos.sort((a, b) => {
         if (isCover(a) !== isCover(b)) return isCover(a) ? -1 : 1;
@@ -177,10 +176,7 @@ async function loadSeries(): Promise<Series[]> {
       });
       photos.forEach((photo, i) => (photo.indexInSeries = i));
 
-      const cover = photos.find((p) => p.file === coverFile) ?? photos[0];
-      if (coverFile && cover.file !== coverFile) {
-        console.warn(`[photos] Cover "${coverFile}" not found in ${slug}, using ${cover.file}`);
-      }
+      const cover = photos[0];
 
       const timestamps = photos.flatMap((p) => (p.takenAt ? [p.takenAt.getTime()] : []));
       const date = timestamps.length

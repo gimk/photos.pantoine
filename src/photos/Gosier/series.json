@@ -1,8 +1,8 @@
 {
+  "//": "Empty fields use the default, see README.md. To choose the cover, name a photo cover.jpg.",
   "title": "",
   "subtitle": "",
   "date": "",
-  "cover": "",
   "order": null,
   "color": "",
   "photos": {
