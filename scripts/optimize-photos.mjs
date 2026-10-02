@@ -11,6 +11,9 @@
 // are removed. Keep your camera files backed up elsewhere. Add --keep to leave originals in place.
 // Files the script doesn't handle (anything but JPEGs) are never touched.
 //
+// It also gives every collection a series.json with each editable field left empty, and adds
+// any new photo to it, keeping what's already filled in.
+//
 // It only ever adds or updates files in src/photos/, never deletes: originals/ is local to each
 // machine (a fresh clone starts with it empty), so it can't be treated as the full list of photos.
 
@@ -55,18 +58,17 @@ async function writeReplacing(dest, data) {
 const isJpeg = (file) => /\.jpe?g$/i.test(file);
 const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
-if (!fs.existsSync(ORIGINALS)) {
-  console.log(`No ${ORIGINALS}/ folder. Put originals in ${ORIGINALS}/<collection>/ and run again.`);
-  process.exit(0);
-}
-
 let converted = 0;
 let skipped = 0;
 let removed = 0;
 let before = 0;
 let after = 0;
 
-for (const collection of fs.readdirSync(ORIGINALS, { withFileTypes: true })) {
+if (!fs.existsSync(ORIGINALS)) {
+  console.log(`No ${ORIGINALS}/ folder. Put originals in ${ORIGINALS}/<collection>/ and run again.`);
+}
+
+for (const collection of fs.existsSync(ORIGINALS) ? fs.readdirSync(ORIGINALS, { withFileTypes: true }) : []) {
   if (!collection.isDirectory()) continue;
 
   const srcDir = path.join(ORIGINALS, collection.name);
@@ -108,7 +110,39 @@ for (const collection of fs.readdirSync(ORIGINALS, { withFileTypes: true })) {
   if (!keep && fs.readdirSync(srcDir).length === 0) fs.rmdirSync(srcDir);
 }
 
+// Every collection gets a series.json listing everything that can be edited, left empty (empty
+// means the default, see README.md). An existing one only gains the fields and photos it lacks:
+// what's already filled in is kept.
+const blankSeries = () => ({ title: "", subtitle: "", date: "", cover: "", order: null, color: "", photos: {} });
+const blankPhoto = () => ({ alt: "", caption: "" });
+let seriesWritten = 0;
+
+for (const collection of fs.readdirSync(OUTPUT, { withFileTypes: true })) {
+  if (!collection.isDirectory()) continue;
+  const file = path.join(OUTPUT, collection.name, "series.json");
+  const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null;
+  let config;
+  try {
+    config = { ...blankSeries(), ...(existing ? JSON.parse(existing) : {}) };
+  } catch (e) {
+    console.warn(`${file} isn't valid JSON, left as it is: ${e.message}`);
+    continue;
+  }
+  const photos = fs
+    .readdirSync(path.join(OUTPUT, collection.name))
+    .filter(isJpeg)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  for (const photo of photos) config.photos[photo] = { ...blankPhoto(), ...config.photos[photo] };
+
+  const json = `${JSON.stringify(config, null, 2)}\n`;
+  if (json === existing) continue;
+  fs.writeFileSync(file, json);
+  seriesWritten++;
+  console.log(`${collection.name}/series.json ${existing ? "updated" : "created"}`);
+}
+
 console.log(
   `\n${converted} converted${converted ? ` (${mb(before)} -> ${mb(after)})` : ""}, ${skipped} already up to date` +
-    (keep ? ", originals kept." : `, ${removed} original${removed === 1 ? "" : "s"} removed from ${ORIGINALS}/.`),
+    (keep ? ", originals kept" : `, ${removed} original${removed === 1 ? "" : "s"} removed from ${ORIGINALS}/`) +
+    `, ${seriesWritten} series.json written.`,
 );

@@ -21,6 +21,7 @@ interface GalleryPhoto {
   exif: string;
   alt: string;
   color: string;
+  tint: string; // the collection's colour
   width: number;
   height: number;
   src: string;
@@ -110,7 +111,7 @@ function setView(next: View) {
 }
 
 // Phones: the browser's toolbar follows the background, black on the index, white on the feed,
-// and in the viewer the page's background with the photo's tint, mixed as site.css mixes it
+// and in the viewer the page's background with the collection's tint, mixed as site.css mixes it
 const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
 function updateThemeColor() {
   if (!themeColor) return;
@@ -120,7 +121,7 @@ function updateThemeColor() {
     return;
   }
   const amount = parseFloat(getComputedStyle(zoomEl).getPropertyValue("--tint-amount")) / 100;
-  const [tint, base] = [photos[current].color, bg].map(rgbOf);
+  const [tint, base] = [photos[current].tint, bg].map(rgbOf);
   themeColor.content = `rgb(${tint.map((c, i) => Math.round(c * amount + base[i] * (1 - amount))).join(" ")})`;
 }
 
@@ -142,7 +143,8 @@ function showPhoto(i: number) {
   const photo = photos[i];
   if (!photo) return;
 
-  if (current === -1) {
+  const opening = current === -1;
+  if (opening) {
     body.removeAttribute("data-hover");
     body.toggleAttribute("data-zoom", true);
     zoomEl.setAttribute("aria-hidden", "false");
@@ -167,7 +169,14 @@ function showPhoto(i: number) {
       zoomImg.classList.add("is-loaded");
       showPlaceholder(null);
     } else showPlaceholder(photo);
-    zoomEl.style.setProperty("--tint", photo.color);
+    // Browsing eases the tint from one collection's to the next; opening the viewer starts
+    // straight on the photo's, not on the colour it was last closed with
+    if (opening) zoomEl.classList.add("is-opening");
+    zoomEl.style.setProperty("--tint", photo.tint);
+    if (opening) {
+      getComputedStyle(zoomEl).getPropertyValue("--tint"); // apply it before the class goes
+      zoomEl.classList.remove("is-opening");
+    }
     updateThemeColor();
   }
 

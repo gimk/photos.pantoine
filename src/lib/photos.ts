@@ -1,10 +1,11 @@
 import type { ImageMetadata } from "astro";
 import exifr from "exifr";
 import path from "node:path";
-import { extractColor } from "./color";
+import { dominantColor, extractColor } from "./color";
 
 // Content model: one folder per series in src/photos/, holding JPEGs and an optional series.json.
-// See README.md for the series.json format.
+// See README.md for the series.json format. `npm run photos` writes each series.json with every
+// field left empty, and an empty field ("" or null) means the default.
 
 export interface Exif {
   make: string | null;
@@ -37,17 +38,20 @@ export interface Series {
   subtitle: string | null;
   // When the series was shot: the earliest photo's EXIF date
   date: Date | null;
+  // The tint most present across its photos' colours: the viewer's background takes it
+  color: string;
   cover: Photo;
   photos: Photo[];
 }
 
 interface SeriesConfig {
-  title?: string;
-  subtitle?: string;
-  date?: string; // "YYYY-MM", only used when no photo in the series has an EXIF date
-  cover?: string;
-  order?: number;
-  photos?: Record<string, { alt?: string; caption?: string }>;
+  title?: string | null;
+  subtitle?: string | null;
+  date?: string | null; // "YYYY-MM", only used when no photo in the series has an EXIF date
+  cover?: string | null;
+  order?: number | null;
+  color?: string | null; // "#rrggbb", replaces the colour picked from the photos
+  photos?: Record<string, { alt?: string | null; caption?: string | null }>;
 }
 
 const imageModules = import.meta.glob<{ default: ImageMetadata }>(
@@ -85,7 +89,16 @@ const cleanString = (value: unknown) =>
 const cleanNumber = (value: unknown) =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
-function parseConfigDate(value: string | undefined, slug: string) {
+function parseConfigColor(value: string | null, slug: string) {
+  if (!value) return null;
+  if (!/^#([0-9a-f]{3}){1,2}$/i.test(value)) {
+    console.warn(`[photos] Ignoring color "${value}" in ${slug}/series.json, expected "#rrggbb"`);
+    return null;
+  }
+  return value;
+}
+
+function parseConfigDate(value: string | null, slug: string) {
   if (!value) return null;
   const match = value.match(/^(\d{4})-(\d{2})$/);
   if (!match) {
@@ -113,7 +126,8 @@ async function loadSeries(): Promise<Series[]> {
   const series = await Promise.all(
     [...filesBySeries.entries()].map(async ([slug, keys]) => {
       const config = configModules[`/src/photos/${slug}/series.json`]?.default ?? {};
-      const title = config.title ?? titleFromSlug(slug);
+      const title = cleanString(config.title) ?? titleFromSlug(slug);
+      const coverFile = cleanString(config.cover);
 
       const photos: Photo[] = await Promise.all(
         keys.map(async (key) => {
@@ -133,8 +147,8 @@ async function loadSeries(): Promise<Series[]> {
             id: `${slug}/${file}`,
             file,
             src,
-            alt: photoConfig.alt ?? `${title}, photograph by Antoine Pouligny`,
-            caption: photoConfig.caption ?? null,
+            alt: cleanString(photoConfig.alt) ?? `${title}, photograph by Antoine Pouligny`,
+            caption: cleanString(photoConfig.caption),
             color,
             width,
             height,
@@ -163,24 +177,27 @@ async function loadSeries(): Promise<Series[]> {
       });
       photos.forEach((photo, i) => (photo.indexInSeries = i));
 
-      const cover = photos.find((p) => p.file === config.cover) ?? photos[0];
-      if (config.cover && cover.file !== config.cover) {
-        console.warn(`[photos] Cover "${config.cover}" not found in ${slug}, using ${cover.file}`);
+      const cover = photos.find((p) => p.file === coverFile) ?? photos[0];
+      if (coverFile && cover.file !== coverFile) {
+        console.warn(`[photos] Cover "${coverFile}" not found in ${slug}, using ${cover.file}`);
       }
 
       const timestamps = photos.flatMap((p) => (p.takenAt ? [p.takenAt.getTime()] : []));
       const date = timestamps.length
         ? new Date(Math.min(...timestamps))
-        : parseConfigDate(config.date, slug);
+        : parseConfigDate(cleanString(config.date), slug);
 
       return {
         slug,
         title,
-        subtitle: config.subtitle ?? null,
+        subtitle: cleanString(config.subtitle),
         date,
+        color:
+          parseConfigColor(cleanString(config.color), slug) ??
+          dominantColor(photos.map((p) => p.color)),
         cover,
         photos,
-        order: config.order,
+        order: cleanNumber(config.order) ?? undefined,
       };
     }),
   );

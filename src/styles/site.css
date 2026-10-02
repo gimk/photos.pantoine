@@ -441,7 +441,7 @@ body:not([data-zoom]) .zoom * {
    background clears to show the page underneath, and the bar fades */
 .zoom {
   z-index: 10;
-  --tint-amount: 5%; /* also read by site.ts, for the phone toolbar */
+  --tint-amount: 8%; /* also read by site.ts, for the phone toolbar */
   background: var(--bg);
   transition:
     opacity var(--fade),
@@ -470,6 +470,13 @@ body:not([data-zoom]) .zoom * {
     visibility var(--fade),
     background-color 0.25s var(--ease),
     --tint 0.8s var(--ease);
+}
+
+/* Opening (set by site.ts for a moment): the tint is set without easing */
+.zoom.is-opening {
+  transition:
+    opacity var(--fade),
+    visibility var(--fade);
 }
 
 .zoom.is-settling .zoom__bar {

@@ -1,0 +1,30 @@
+{
+  "title": "",
+  "subtitle": "",
+  "date": "",
+  "cover": "",
+  "order": null,
+  "color": "",
+  "photos": {
+    "cover.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "XT5X1806.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "XT5X1894.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "XT5X1952.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "XT5X1967.jpg": {
+      "alt": "",
+      "caption": ""
+    }
+  }
+}

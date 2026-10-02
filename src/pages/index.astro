@@ -35,6 +35,7 @@ const galleryData = await Promise.all(
         exif: formatExifLine(photo.exif),
         alt: photo.alt,
         color: photo.color,
+        tint: s.color,
         width: photo.width,
         height: photo.height,
         src: full.src,
