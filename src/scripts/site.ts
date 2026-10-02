@@ -712,11 +712,12 @@ if (timeline) {
   const sizeOf = (row: HTMLElement) => (isYear(row) ? 2.2 : 1);
   const centres = new Map<HTMLElement, number>(); // each row's height from the top, compact, px
   let focused = -1;
+  let line = LINE; // px per line, compact
 
   const layOut = () => {
     const spreadMax = parseFloat(getComputedStyle(timeline).getPropertyValue("--spread-max")) || 0;
     const units = rows.reduce((n, row) => n + sizeOf(row), 0);
-    const line = Math.min(LINE, (window.innerHeight * 0.85) / Math.max(1, units)) / (1 + spreadMax);
+    line = Math.min(LINE, (window.innerHeight * 0.85) / Math.max(1, units)) / (1 + spreadMax);
     let y = 0;
     rows.forEach((row) => {
       const size = sizeOf(row) * line;
@@ -730,17 +731,19 @@ if (timeline) {
   layOut();
   window.addEventListener("resize", layOut);
 
-  // The line nearest y (from the top of the rows, compact, px), or none
+  // The line nearest y (from the top of the rows, compact, px), if it's on that line's row (not
+  // past the ends, or on a year), or none. The pointer turns to a hand on one.
   const focus = (y: number | null) => {
     focused = -1;
     if (y !== null) {
-      let best = Infinity;
+      let best = line * 0.6;
       items.forEach((item, i) => {
         const distance = Math.abs(centres.get(item)! - y);
         if (distance < best) [best, focused] = [distance, i];
       });
     }
     items.forEach((item, i) => item.classList.toggle("is-focus", i === focused));
+    timeline.classList.toggle("is-pointing", focused !== -1);
   };
 
   timeline.addEventListener("pointermove", (e) => {

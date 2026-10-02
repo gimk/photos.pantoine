@@ -541,6 +541,10 @@ body[data-about] .timeline {
   outline: none;
 }
 
+.timeline.is-pointing {
+  cursor: pointer;
+}
+
 .empty {
   padding: 30vh var(--page-mg);
   text-align: center;
