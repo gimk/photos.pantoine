@@ -395,6 +395,152 @@ body[data-view="index"] .feed {
   display: none;
 }
 
+/* Scrolling to a collection (the timeline) leaves it where the first one sits at the top */
+.feed__item {
+  scroll-margin-top: calc(var(--nav-h) + var(--page-mg));
+}
+
+.index__thumb {
+  scroll-margin-top: calc(var(--nav-h) * 2.5);
+}
+
+/* ---------------------------------------------------------------------------
+   Timeline: one thin line per collection, centred on the right edge (mouse only), under year
+   headings. Hovering it spreads it out and shows the years and every collection's name.
+   site.ts lays the rows out (--y, and the timeline's --height). */
+
+/* Registered so it eases on its own, and the rows follow */
+@property --spread {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.timeline {
+  --tick: 10px;
+  --pad: 24px; /* the hover zone past the ends, and the names' room on the left once hovered */
+  --names: 0px;
+  --spread-max: 0.6; /* also read by site.ts: hovered, the rows are this much further apart */
+  --scale: calc(1 + var(--spread) * var(--spread-max));
+  position: fixed;
+  top: 50%;
+  right: 0;
+  z-index: 25;
+  display: none;
+  width: calc(var(--page-mg) + var(--tick) + 24px + var(--names));
+  height: calc(var(--height, 0px) * var(--scale));
+  /* The hover zone reaches a little past the ends */
+  box-sizing: content-box;
+  padding: var(--pad) 0;
+  translate: 0 -50%;
+  color: #fff;
+  mix-blend-mode: difference;
+  font-size: 12px;
+  transition:
+    opacity var(--fade),
+    visibility var(--fade),
+    --spread 0.3s var(--ease);
+}
+
+/* Once open, the hover zone takes in the names and more room above and below, so it doesn't
+   close as the pointer wanders onto them */
+.timeline.is-hover,
+.timeline:focus-within {
+  --spread: 1;
+  --pad: 80px;
+  --names: 200px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .timeline {
+    display: block;
+  }
+}
+
+body[data-zoom] .timeline,
+body[data-about] .timeline {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.timeline__item,
+.timeline__year {
+  position: absolute;
+  top: calc(var(--pad) + var(--y, 0px) * var(--scale));
+}
+
+.timeline__item {
+  right: var(--page-mg);
+  display: block;
+  width: var(--tick);
+  height: 0;
+}
+
+.timeline__tick {
+  position: absolute;
+  right: 0;
+  top: -0.5px;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.4;
+  transition: opacity 0.2s var(--ease);
+}
+
+/* The collection in view, and the one under the pointer */
+.timeline__item.is-current .timeline__tick {
+  opacity: 0.8;
+}
+
+.timeline__item.is-focus .timeline__tick {
+  opacity: 1;
+}
+
+/* Hovered: the names left of the lines, and the years, in italic, in the same column */
+.timeline__label,
+.timeline__year {
+  white-space: nowrap;
+  line-height: 1;
+  translate: 0 -50%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--fade);
+}
+
+.timeline__label {
+  position: absolute;
+  top: 0;
+  right: calc(var(--tick) + 8px);
+  font-weight: var(--weight);
+  transition:
+    opacity var(--fade),
+    font-weight 0.3s var(--ease);
+}
+
+.timeline__year {
+  right: calc(var(--page-mg) + var(--tick) + 8px);
+  font-style: italic;
+}
+
+.timeline.is-hover .timeline__label,
+.timeline:focus-within .timeline__label {
+  opacity: 1;
+}
+
+.timeline.is-hover .timeline__year,
+.timeline:focus-within .timeline__year {
+  opacity: 1;
+}
+
+/* The one under the pointer thickens, as the nav's links do on hover */
+.timeline__item.is-focus .timeline__label {
+  font-weight: var(--weight-hover);
+}
+
+.timeline__item:focus-visible {
+  outline: none;
+}
+
 .empty {
   padding: 30vh var(--page-mg);
   text-align: center;
@@ -532,17 +678,18 @@ body:not([data-zoom]) .zoom * {
   opacity: 1;
 }
 
-/* Slow to load (site.ts): its colour shows meanwhile, and once loaded it comes in out of a blur
-   over it. The blur only transitions on the way in, so it's set at once on the hidden photo. */
+/* Slow to load (site.ts): its colour shows meanwhile, and once loaded it fades in over it, out
+   of a slight blur (light enough that it barely spreads past the photo's edges). The blur only
+   transitions on the way in, so it's set at once on the hidden photo. */
 .zoom__img.is-slow {
-  filter: blur(24px);
+  filter: blur(6px);
 }
 
 .zoom__img.is-slow.is-loaded {
   filter: blur(0);
   transition:
-    opacity 0.3s var(--ease),
-    filter 0.6s var(--ease);
+    opacity 0.6s var(--ease),
+    filter 0.5s var(--ease);
 }
 
 /* Hidden while a copy of the photo flies in or out */

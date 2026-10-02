@@ -1,0 +1,44 @@
+---
+import type { Series } from "../lib/photos";
+import { formatMonthYear } from "../utils/formatters";
+
+interface Props {
+  series: Series[];
+}
+
+const { series } = Astro.props;
+
+type Row = { kind: "year"; year: number } | { kind: "item"; series: Series };
+
+// A year heading wherever the year changes, in page order (undated collections get none)
+const rows = series.flatMap((s, i): Row[] => {
+  const year = s.date?.getFullYear();
+  const item: Row = { kind: "item", series: s };
+  return year && year !== series[i - 1]?.date?.getFullYear() ? [{ kind: "year", year }, item] : [item];
+});
+---
+
+<!--
+  One thin line per collection, in page order, under year headings, centred on the right
+  edge. Hovering it spreads it out and shows the years and every collection's name; a
+  click scrolls the feed or index to the collection under the pointer. site.ts drives it.
+-->
+<nav class="timeline" aria-label="Collections timeline">
+  {
+    rows.map((row) =>
+      row.kind === "item" ? (
+        <button
+          type="button"
+          class="timeline__item"
+          data-timeline-slug={row.series.slug}
+          aria-label={[row.series.title, formatMonthYear(row.series.date)].filter(Boolean).join(", ")}
+        >
+          <span class="timeline__tick" />
+          <span class="timeline__label" aria-hidden="true">{row.series.title}</span>
+        </button>
+      ) : (
+        <span class="timeline__year" aria-hidden="true">{row.year}</span>
+      ),
+    )
+  }
+</nav>

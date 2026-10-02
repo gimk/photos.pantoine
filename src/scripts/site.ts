@@ -697,5 +697,107 @@ marquee.addEventListener("dblclick", () => {
   indexEl.style.removeProperty("gap");
 });
 
+// Timeline: one line per collection on the right edge, under year headings
+// (site.css). It spreads out while hovered, showing every name; a click scrolls to the
+// collection under the pointer.
+const timeline = document.querySelector<HTMLElement>(".timeline");
+if (timeline) {
+  const rows = [...timeline.querySelectorAll<HTMLElement>(".timeline__item, .timeline__year")];
+  const items = rows.filter((row) => row.matches(".timeline__item"));
+  // Spread out, a line takes LINE px, less when they'd fill more than 85% of the screen; compact,
+  // that over 1 + --spread-max. A year takes more room, most of it above, so it sits apart from
+  // the year before and close to its own collections.
+  const LINE = 20;
+  const isYear = (row: HTMLElement) => row.matches(".timeline__year");
+  const sizeOf = (row: HTMLElement) => (isYear(row) ? 2.2 : 1);
+  const centres = new Map<HTMLElement, number>(); // each row's height from the top, compact, px
+  let focused = -1;
+
+  const layOut = () => {
+    const spreadMax = parseFloat(getComputedStyle(timeline).getPropertyValue("--spread-max")) || 0;
+    const units = rows.reduce((n, row) => n + sizeOf(row), 0);
+    const line = Math.min(LINE, (window.innerHeight * 0.85) / Math.max(1, units)) / (1 + spreadMax);
+    let y = 0;
+    rows.forEach((row) => {
+      const size = sizeOf(row) * line;
+      const centre = y + size * (isYear(row) && y > 0 ? 0.65 : 0.5);
+      centres.set(row, centre);
+      row.style.setProperty("--y", `${centre}px`);
+      y += size;
+    });
+    timeline.style.setProperty("--height", `${y}px`);
+  };
+  layOut();
+  window.addEventListener("resize", layOut);
+
+  // The line nearest y (from the top of the rows, compact, px), or none
+  const focus = (y: number | null) => {
+    focused = -1;
+    if (y !== null) {
+      let best = Infinity;
+      items.forEach((item, i) => {
+        const distance = Math.abs(centres.get(item)! - y);
+        if (distance < best) [best, focused] = [distance, i];
+      });
+    }
+    items.forEach((item, i) => item.classList.toggle("is-focus", i === focused));
+  };
+
+  timeline.addEventListener("pointermove", (e) => {
+    timeline.classList.add("is-hover");
+    // The rows as spread out right now (it may still be easing open)
+    const box = timeline.getBoundingClientRect();
+    const height = parseFloat(timeline.style.getPropertyValue("--height")) || 1;
+    const padding = parseFloat(getComputedStyle(timeline).paddingTop);
+    const scale = (box.height - 2 * padding) / height;
+    focus((e.clientY - box.top - padding) / scale);
+  });
+  timeline.addEventListener("pointerleave", () => {
+    timeline.classList.remove("is-hover");
+    focus(null);
+  });
+  // Clicks don't focus the lines, so the keyboard focus below only follows the keyboard
+  timeline.addEventListener("mousedown", (e) => e.preventDefault());
+  timeline.addEventListener("focusin", (e) => {
+    const item = e.target as HTMLElement;
+    if (centres.has(item)) focus(centres.get(item)!);
+  });
+  timeline.addEventListener("focusout", () => focus(null));
+
+  // The collection's cover in the feed, or its first thumbnail in the index
+  const targetOf = (slug: string) =>
+    document.querySelector<HTMLElement>(`.${view} [data-slug="${CSS.escape(slug)}"]`);
+
+  timeline.addEventListener("click", () => {
+    const slug = items[focused]?.dataset.timelineSlug;
+    const target = slug && targetOf(slug);
+    if (target) target.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" });
+  });
+
+  // The collection in view: the last one starting above the middle of the screen
+  const markCurrent = () => {
+    let inView = 0;
+    items.forEach((item, i) => {
+      const target = targetOf(item.dataset.timelineSlug!);
+      if (target && target.getBoundingClientRect().top < window.innerHeight / 2) inView = i;
+    });
+    items.forEach((item, i) => item.classList.toggle("is-current", i === inView));
+  };
+  let markQueued = false;
+  const queueMark = () => {
+    if (markQueued) return;
+    markQueued = true;
+    requestAnimationFrame(() => {
+      markQueued = false;
+      if (current === -1) markCurrent();
+    });
+  };
+  window.addEventListener("scroll", queueMark, { passive: true });
+  window.addEventListener("resize", queueMark);
+  window.addEventListener("popstate", queueMark);
+  document.addEventListener("click", queueMark); // a view change from the nav
+  queueMark();
+}
+
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 render();

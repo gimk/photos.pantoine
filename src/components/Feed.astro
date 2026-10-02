@@ -20,7 +20,7 @@ const coverSizes = (width: number, height: number) => {
 <section class="feed" aria-label="Collections">
   {
     series.map((s, i) => (
-      <article class="feed__item">
+      <article class="feed__item" data-slug={s.slug}>
         <p class="feed__label">
           <span class="feed__line">
             <span class="feed__title">{s.title}</span>
