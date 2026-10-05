@@ -253,17 +253,29 @@ const loaded = (img: HTMLImageElement) =>
 
 // The clicked thumbnail / cover flies and grows to the centre. The small image does the flying;
 // the full-size one replaces it once downloaded.
+let flyingIn: AbortController | null = null; // set until the full-size photo has replaced the copy
+
 async function flyIn(source: HTMLImageElement, photo: GalleryPhoto) {
   if (reducedMotion()) return;
   endFlight();
   showPlaceholder(null); // the thumbnail itself flies in and stands in for the photo
   const from = containedRect(source.getBoundingClientRect(), ratioOf(photo));
   zoomImg.classList.add("is-hidden");
-  const copy = await fly(source.currentSrc || source.src, from, viewerRect(photo), () => {
-    source.style.visibility = "hidden";
-  });
-  flightCopy = copy;
+  const flight = new AbortController();
+  flyingIn = flight;
+  const copy = await fly(
+    source.currentSrc || source.src,
+    from,
+    viewerRect(photo),
+    () => {
+      source.style.visibility = "hidden";
+    },
+    false,
+    flight.signal,
+  );
   source.style.visibility = "";
+  if (flight.signal.aborted) return copy.remove();
+  flightCopy = copy;
 
   // Show the full-size photo under the landed copy (no fade), and only remove the copy once
   // the photo has been painted, so there's never a frame with neither
@@ -276,6 +288,18 @@ async function flyIn(source: HTMLImageElement, photo: GalleryPhoto) {
   await painted();
   zoomImg.style.transition = "";
   if (flightCopy === copy) endFlight();
+  if (flyingIn === flight) flyingIn = null;
+}
+
+// Lands the opening flight at once and shows the viewer image in its place (no fade; faded in
+// over its colour once loaded, if it hasn't yet), so a swipe can start straight away
+function cutFlyIn() {
+  flyingIn?.abort();
+  flyingIn = null;
+  endFlight();
+  zoomImg.style.transition = "none";
+  if (!zoomImg.classList.contains("is-loaded")) showPlaceholder(photos[current]);
+  painted().then(() => (zoomImg.style.transition = ""));
 }
 
 // Closing: the photo flies back into its thumbnail (index) or cover (feed), scrolling it into view
@@ -499,12 +523,14 @@ let sliding = false;
 stage.addEventListener(
   "touchstart",
   (e) => {
+    // A new touch cuts short the opening flight, or a slide or settle still under way, so swipes
+    // can follow each other as fast as the finger goes
+    if (flyingIn) cutFlyIn();
+    if (sliding) stopSliding();
     zoomEl.classList.remove("is-settling");
     const t = e.touches[0];
     swipe =
-      e.touches.length === 1 && !sliding
-        ? { x: t.clientX, y: t.clientY, time: e.timeStamp, axis: null, dx: 0, dy: 0 }
-        : null;
+      e.touches.length === 1 ? { x: t.clientX, y: t.clientY, time: e.timeStamp, axis: null, dx: 0, dy: 0 } : null;
   },
   { passive: true },
 );
@@ -590,18 +616,28 @@ function hidePeek() {
   peek.style.transform = "";
 }
 
+// Each settle or slide gets its own number: one cut short by stopSliding() sees it's no longer
+// the latest and stops where it is
+let motion = 0;
+let easing: Animation[] = [];
+let unstepped: 1 | -1 | 0 = 0; // a slide still on its way, before it has stepped to its photo
+
 // Animates `el` from where it is to `to`
 function ease(el: HTMLElement, to: string, duration: number) {
   const from = el.style.transform || "none";
   el.style.transform = to === "none" ? "" : to;
-  return el
-    .animate([{ transform: from }, { transform: to }], { duration, easing: SWIPE_EASE })
-    .finished.catch(() => {});
+  const anim = el.animate([{ transform: from }, { transform: to }], { duration, easing: SWIPE_EASE });
+  easing.push(anim);
+  return anim.finished.then(
+    () => {},
+    () => {},
+  );
 }
 
 async function settleSwipe() {
   swipe = null;
   sliding = true;
+  const id = ++motion;
   if (swipeHidden) swipeHidden.style.visibility = "";
   swipeHidden = null;
   zoomEl.classList.add("is-settling");
@@ -610,6 +646,8 @@ async function settleSwipe() {
     ease(zoomImg, "none", 300),
     peekDelta ? ease(peek, `translateX(${peekOffset(peekDelta)}px)`, 300) : null,
   ]);
+  if (id !== motion) return;
+  easing = [];
   hidePeek();
   sliding = false;
 }
@@ -617,10 +655,15 @@ async function settleSwipe() {
 // The photo and its neighbour carry on the way they were going, until the neighbour is in place
 async function slide(delta: 1 | -1) {
   sliding = true;
+  const id = ++motion;
+  unstepped = delta;
   await Promise.all([
     ease(zoomImg, `translateX(${-peekOffset(delta)}px)`, 300),
     ease(peek, "none", 300),
   ]);
+  if (id !== motion) return;
+  easing = [];
+  unstepped = 0;
 
   // The neighbour now covers the viewer image: switch that to the new photo underneath (no fade),
   // and drop the neighbour once it's painted, so there's never a frame with neither
@@ -629,11 +672,29 @@ async function slide(delta: 1 | -1) {
   step(delta);
   await loaded(zoomImg);
   await zoomImg.decode().catch(() => {});
+  if (id !== motion) return;
   zoomImg.style.transition = "none";
   zoomImg.classList.add("is-loaded");
   zoomImg.classList.remove("is-hidden");
   await painted();
   zoomImg.style.transition = "";
+  if (id !== motion) return;
+  hidePeek();
+  sliding = false;
+}
+
+// Jumps a settle or slide to its end at once: a slide steps to its photo straight away, shown in
+// place with no fade (or faded in once loaded, if it hasn't yet)
+function stopSliding() {
+  motion++;
+  easing.forEach((a) => a.cancel());
+  easing = [];
+  zoomImg.style.transform = "";
+  if (unstepped) step(unstepped);
+  unstepped = 0;
+  zoomImg.style.transition = "none";
+  zoomImg.classList.remove("is-hidden");
+  painted().then(() => (zoomImg.style.transition = ""));
   hidePeek();
   sliding = false;
 }

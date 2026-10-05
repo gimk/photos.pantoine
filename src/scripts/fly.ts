@@ -10,7 +10,7 @@ export interface Rect {
 }
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)"; // fast start, soft landing
-const DURATION = 650;
+const DURATION = 480;
 
 export const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -49,6 +49,7 @@ export const painted = () =>
  * underneath before calling `remove()` on it.
  * With `onPage`, the copy is pinned to the page rather than the viewport, so if the page scrolls
  * during the flight the copy scrolls with it and still lands on its target.
+ * Aborting `signal` lands the copy at once, or never shows it if it hadn't taken off yet.
  */
 export async function fly(
   src: string,
@@ -56,6 +57,7 @@ export async function fly(
   to: Rect,
   onReady: () => void,
   onPage = false,
+  signal?: AbortSignal,
 ): Promise<HTMLImageElement> {
   const copy = new Image();
   copy.src = src;
@@ -71,13 +73,15 @@ export async function fly(
     transform: start,
   });
   await copy.decode().catch(() => {});
+  if (signal?.aborted) return copy;
   document.body.append(copy);
   await painted();
+  if (signal?.aborted) return copy;
   onReady();
 
-  await copy
-    .animate([{ transform: start }, { transform: "none" }], { duration: DURATION, easing: EASE })
-    .finished.catch(() => {});
+  const anim = copy.animate([{ transform: start }, { transform: "none" }], { duration: DURATION, easing: EASE });
+  signal?.addEventListener("abort", () => anim.finish(), { once: true });
+  await anim.finished.catch(() => {});
   copy.style.transform = "none";
   return copy;
 }
