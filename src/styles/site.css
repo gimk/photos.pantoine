@@ -5,6 +5,11 @@
 :root {
   --page-mg: 12px;
   --nav-h: 48px;
+  /* The page runs under the phone's system bars and rounded corners (viewport-fit=cover):
+     text along the edges keeps clear of them. Chrome's inset grows as its toolbar scrolls away. */
+  --safe-left: max(var(--page-mg), env(safe-area-inset-left, 0px));
+  --safe-right: max(var(--page-mg), env(safe-area-inset-right, 0px));
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
   /* Gap between the nav's paired labels; also bounds the sticky feed labels */
   --nav-gap: clamp(40px, 12.8vw, 240px);
   --font: "Fraunces Variable", Georgia, serif;
@@ -131,7 +136,7 @@ img {
   column-gap: var(--page-mg);
   align-items: center;
   height: var(--nav-h);
-  padding: 0 var(--page-mg);
+  padding: 0 var(--safe-right) 0 var(--safe-left);
   pointer-events: none;
 }
 
@@ -635,7 +640,7 @@ body:not([data-zoom]) .zoom * {
 .zoom__stage {
   position: absolute;
   inset: 0;
-  padding: var(--nav-h) var(--page-mg);
+  padding: var(--nav-h) var(--page-mg) calc(var(--nav-h) + var(--safe-bottom));
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
@@ -715,8 +720,8 @@ body:not([data-zoom]) .zoom * {
   grid-template-columns: max-content minmax(0, 1fr);
   column-gap: 1.5em;
   align-items: center;
-  height: var(--nav-h);
-  padding: 0 var(--page-mg);
+  height: calc(var(--nav-h) + var(--safe-bottom));
+  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
   pointer-events: none; /* text only: clicks go through to the stage's Close zone */
 }
 
@@ -936,13 +941,13 @@ body:not([data-zoom]) .zoom * {
 
   /* The photo goes edge to edge */
   .zoom__stage {
-    padding: var(--nav-h) 0 96px;
+    padding: var(--nav-h) 0 calc(96px + var(--safe-bottom));
   }
 
   .zoom__bar {
     height: auto;
     column-gap: var(--page-mg);
-    padding-bottom: var(--page-mg);
+    padding-bottom: calc(var(--page-mg) + var(--safe-bottom));
     row-gap: 4px;
   }
 
