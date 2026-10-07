@@ -1,4 +1,4 @@
-# GEMINI.md - Photos.pantoine.com
+# GEMINI.md - photos.pantoine
 
 This project is a personal photography portfolio website built with Astro. Its layout is modelled on zanvargek.com: a black index of every image (the home page), a white feed of series covers, and a full-screen viewer.
 

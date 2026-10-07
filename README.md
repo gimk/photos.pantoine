@@ -1,6 +1,6 @@
-# photos.pantoine.com
+# photos.pantoine
 
-This is my personal photography portfolio website.
+This is my personal photography portfolio website, live at [photos.pantoine.com](https://photos.pantoine.com).
 Feel free to use it as a template for yours !
 
 ## Tech Used
