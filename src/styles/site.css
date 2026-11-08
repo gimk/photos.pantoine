@@ -110,12 +110,15 @@ img {
 /* Negative text: white blended with `difference` renders each glyph as the exact
    inverse of whatever is behind it (black on white, white on black, cyan on red...),
    so it stays legible over the page, the viewer and photos scrolling under the nav.
-   Muted text is translucent white, i.e. a partial inversion. */
+   Muted text is translucent white, i.e. a partial inversion. The About palette dots are
+   left out on purpose: blended, they would show inverted on the white overlay. */
 .nav,
 .feed__label,
 .zoom__bar,
 .zoom__cursor,
-.about__inner,
+.about__desc,
+.about__list,
+.about__section-lbl,
 .empty {
   color: #fff;
   mix-blend-mode: difference;
