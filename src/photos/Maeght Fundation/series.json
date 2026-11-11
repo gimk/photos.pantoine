@@ -1,0 +1,34 @@
+{
+  "//": "Empty fields use the default, see README.md. To choose the cover, name a photo cover.jpg.",
+  "title": "",
+  "subtitle": "",
+  "date": "",
+  "order": null,
+  "color": "",
+  "photos": {
+    "XT5X2158.JPG": {
+      "alt": "",
+      "caption": ""
+    },
+    "XT5X2169.JPG": {
+      "alt": "",
+      "caption": ""
+    },
+    "XT5X2179.JPG": {
+      "alt": "",
+      "caption": ""
+    },
+    "XT5X2198.JPG": {
+      "alt": "",
+      "caption": ""
+    },
+    "XT5X2199.JPG": {
+      "alt": "",
+      "caption": ""
+    },
+    "XT5X2212.JPG": {
+      "alt": "",
+      "caption": ""
+    }
+  }
+}
