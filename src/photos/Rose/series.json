@@ -1,0 +1,42 @@
+{
+  "//": "Empty fields use the default, see README.md. To choose the cover, name a photo cover.jpg.",
+  "title": "",
+  "subtitle": "",
+  "date": "",
+  "order": null,
+  "color": "",
+  "photos": {
+    "P1010247.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "P1010250.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "P1010290.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "P1010294_01.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "P1010307.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "P1010326.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "P1010333_01.jpg": {
+      "alt": "",
+      "caption": ""
+    },
+    "P1010359_01.jpg": {
+      "alt": "",
+      "caption": ""
+    }
+  }
+}
