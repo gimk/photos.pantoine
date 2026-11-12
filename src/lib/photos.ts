@@ -111,7 +111,7 @@ const titleFromSlug = (slug: string) =>
   slug
     .replace(/^\d{4}-/, "")
     .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+    .replace(/(?<=^|[^\p{L}\p{N}\p{M}])\p{L}/gu, (c) => c.toUpperCase());
 
 async function loadSeries(): Promise<Series[]> {
   // Group image modules by their series folder
