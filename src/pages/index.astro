@@ -56,17 +56,26 @@ const description = "Photographs by Antoine Pouligny, grouped in collections.";
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon-light.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon-light.svg" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon-dark.svg" media="(prefers-color-scheme: dark)" />
+    <link rel="canonical" href={Astro.site} />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- Phones' toolbar: the index's black; site.ts keeps it following the background -->
     <meta name="theme-color" content="#000" />
     <meta name="generator" content={Astro.generator} />
     <title>Photos | Pantoine.com</title>
     <meta name="description" content={description} />
+    <meta property="og:site_name" content="Photos Pantoine" />
+    <meta property="og:url" content={Astro.site} />
     <meta property="og:title" content="Photos Pantoine - Antoine Pouligny" />
     <meta property="og:description" content={description} />
     {ogImage && <meta property="og:image" content={new URL(ogImage.src, Astro.site)} />}
+    {ogImage && series[0] && <meta property="og:image:alt" content={series[0].cover.alt} />}
+    {ogImage && <meta property="og:image:width" content={String(ogImage.attributes.width)} />}
+    {ogImage && <meta property="og:image:height" content={String(ogImage.attributes.height)} />}
     <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    {ogImage && <meta name="twitter:image" content={new URL(ogImage.src, Astro.site)} />}
   </head>
   <body data-view="index">
     <Nav totalPhotos={totalPhotos} />

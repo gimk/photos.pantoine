@@ -107,6 +107,11 @@ img {
   outline-offset: 3px;
 }
 
+.zoom:focus,
+.about:focus {
+  outline: none;
+}
+
 /* Negative text: white blended with `difference` renders each glyph as the exact
    inverse of whatever is behind it (black on white, white on black, cyan on red...),
    so it stays legible over the page, the viewer and photos scrolling under the nav.

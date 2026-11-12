@@ -8,12 +8,10 @@ interface Props {
 const { series } = Astro.props;
 ---
 
-<div class="about" aria-hidden="true" role="dialog" aria-label="About">
+<div class="about" aria-hidden="true" role="dialog" aria-modal="true" aria-label="About" tabindex="-1">
   <div class="about__inner">
     <p class="about__desc">
-      <!-- TODO: write your own bio -->
-      Photographs by Antoine Pouligny, grouped in collections. A quiet place to look
-      at them, one at a time.
+      Engineer and product designer, taking photos here and there, grouped in collections.
     </p>
 
     <div class="about__list">

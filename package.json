@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "check": "astro check",
     "preview": "astro preview",
     "photos": "node scripts/optimize-photos.mjs",
     "astro": "astro"
@@ -17,6 +18,8 @@
     "sharp": "^0.34.5"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0"
+    "@astrojs/check": "^0.9.12",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.3"
   }
 }

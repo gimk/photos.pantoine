@@ -35,6 +35,7 @@ const photos: GalleryPhoto[] = JSON.parse(
   document.getElementById("gallery-data")?.textContent || "[]",
 );
 
+const mainEl = document.querySelector<HTMLElement>(".main")!;
 const zoomEl = document.querySelector<HTMLElement>(".zoom")!;
 const aboutEl = document.querySelector<HTMLElement>(".about")!;
 const stage = document.querySelector<HTMLElement>("[data-zoom-stage]")!;
@@ -131,9 +132,36 @@ function rgbOf(hex: string) {
   return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
 }
 
+let lastFocusBeforeZoom: HTMLElement | null = null;
+let lastFocusBeforeAbout: HTMLElement | null = null;
+
+function syncInert() {
+  const zoomOpen = current !== -1;
+  const aboutOpen = body.hasAttribute("data-about");
+  mainEl.inert = zoomOpen || aboutOpen;
+  zoomEl.inert = !zoomOpen || aboutOpen;
+  aboutEl.inert = !aboutOpen;
+}
+syncInert();
+
 function setAbout(open: boolean) {
+  const wasOpen = body.hasAttribute("data-about");
+  if (open === wasOpen) return;
+  if (open) {
+    lastFocusBeforeAbout =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
   body.toggleAttribute("data-about", open);
   aboutEl.setAttribute("aria-hidden", String(!open));
+  syncInert();
+  if (open) {
+    aboutEl.focus({ preventScroll: true });
+  } else if (current !== -1) {
+    zoomEl.focus({ preventScroll: true });
+  } else if (lastFocusBeforeAbout?.isConnected) {
+    lastFocusBeforeAbout.focus({ preventScroll: true });
+    lastFocusBeforeAbout = null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +173,9 @@ function showPhoto(i: number) {
 
   const opening = current === -1;
   if (opening) {
+    if (document.activeElement instanceof HTMLElement && !aboutEl.contains(document.activeElement)) {
+      lastFocusBeforeZoom = document.activeElement;
+    }
     body.removeAttribute("data-hover");
     body.toggleAttribute("data-zoom", true);
     zoomEl.setAttribute("aria-hidden", "false");
@@ -156,6 +187,10 @@ function showPhoto(i: number) {
 
   if (i !== current) {
     current = i;
+    syncInert();
+    if (opening && !body.hasAttribute("data-about")) {
+      zoomEl.focus({ preventScroll: true });
+    }
     zoomImg.classList.remove("is-loaded", "is-slow");
     zoomImg.onload = photoLoaded;
     zoomEl.classList.remove("is-exif");
@@ -226,7 +261,16 @@ function closeZoom() {
   flyOut(photo); // measures the viewer, so before it starts fading out
   body.removeAttribute("data-zoom");
   zoomEl.setAttribute("aria-hidden", "true");
+  syncInert();
   updateThemeColor();
+  if (!body.hasAttribute("data-about")) {
+    const target =
+      lastFocusBeforeZoom?.isConnected
+        ? lastFocusBeforeZoom
+        : pageImage(photo)?.closest<HTMLElement>("a");
+    target?.focus({ preventScroll: true });
+    lastFocusBeforeZoom = null;
+  }
 }
 
 // ---------------------------------------------------------------------------
